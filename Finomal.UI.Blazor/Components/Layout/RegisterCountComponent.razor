@@ -1,0 +1,244 @@
+﻿@using Finomal.UI.Blazor.Components.model
+@using Finomal.UI.Blazor.Components.Layout
+@using static Finomal.UI.Blazor.Pages.CreateWarehouse
+@inject IJSRuntime JSRuntime
+
+<div class="card">
+    <div class="card-header">
+        @if (currentView == ViewMode.List)
+        {
+            <div class="d-flex justify-content-between align-items-center">
+                <span>فهرست دوره‌های شمارش انبار</span>
+                <button class="btn btn-primary" @onclick="ShowCreateView">
+                    <i class="fas fa-plus me-1"></i> ایجاد دوره شمارش جدید
+                </button>
+            </div>
+        }
+        else if (currentView == ViewMode.Create)
+        {
+            <span>ایجاد دوره شمارش جدید</span>
+        }
+        else if (currentView == ViewMode.Edit)
+        {
+            <span>مدیریت شمارش: @selectedSession?.Name</span>
+        }
+    </div>
+    <div class="card-body">
+
+        @* ==================== 1. نمای لیست دوره‌ها ==================== *@
+        @if (currentView == ViewMode.List)
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>نام دوره</th>
+                            <th>انبار</th>
+                            <th>تاریخ شروع</th>
+                            <th class="text-center">وضعیت</th>
+                            <th class="text-center">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var session in stocktakeSessions)
+                        {
+                            <tr>
+                                <td>@session.Name</td>
+                                <td>@session.Warehouse?.Name</td>
+                                <td>@session.StartDate.ToShortDateString()</td>
+                                <td class="text-center">
+                                    <span class="badge @(session.IsCompleted ? "bg-success" : "bg-warning text-dark")">
+                                        @(session.IsCompleted ? "نهایی شده" : "در حال انجام")
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    @if (!session.IsCompleted)
+                                    {
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowEditView(session)" title="مدیریت شمارش">
+                                            <i class="fas fa-edit"></i> مدیریت
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-success" @onclick="() => FinalizeSession(session)" title="نهایی کردن دوره">
+                                            <i class="fas fa-check-circle"></i> نهایی کردن
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-info" @onclick="() => ShowEditView(session)" title="مشاهده جزئیات">
+                                            <i class="fas fa-eye"></i> مشاهده
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @* ==================== 2. نمای ایجاد دوره جدید ==================== *@
+        @if (currentView == ViewMode.Create)
+        {
+            <EditForm Model="newSession" OnValidSubmit="HandleCreateSession">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">نام دوره شمارش</label>
+                        <InputText class="form-control" @bind-Value="newSession.Name" placeholder="مثال: انبارگردانی پایان سال ۱۴۰۴" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">کدام انبار شمارش می‌شود؟</label>
+                        <InputSelect class="form-select" @bind-Value="newSession.WarehouseId">
+                            <option value="0">-- انتخاب انبار --</option>
+                            @foreach (var wh in warehouses)
+                            {
+                                <option value="@wh.Id">@wh.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+                <p class="form-text">پس از ایجاد، تمام کالاهای موجود در انبار انتخاب شده به صورت خودکار به لیست شمارش اضافه خواهند شد.</p>
+                <hr />
+                <button type="submit" class="btn btn-success"><i class="fas fa-check me-1"></i> ایجاد و شروع شمارش</button>
+                <button type="button" class="btn btn-secondary" @onclick="ShowListView"><i class="fas fa-times me-1"></i> انصراف</button>
+            </EditForm>
+        }
+
+        @* ==================== 3. نمای ثبت و ویرایش شمارش ==================== *@
+        @if (currentView == ViewMode.Edit && selectedSession != null)
+        {
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <button class="btn btn-secondary" @onclick="ShowListView"><i class="fas fa-arrow-right me-1"></i> بازگشت به فهرست</button>
+                @if (!selectedSession.IsCompleted)
+                {
+                    <button class="btn btn-success" @onclick="() => productDialog.Open()"><i class="fas fa-plus me-1"></i> افزودن کالا</button>
+                }
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead><tr><th>کالا</th><th>موجودی سیستم</th><th>شمارش شده</th><th>مغایرت</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var item in selectedSession.Items)
+                        {
+                            <tr class="@(item.Discrepancy == 0 ? "" : (item.Discrepancy > 0 ? "table-success" : "table-danger"))">
+                                <td>@item.Product?.Name</td>
+                                <td>@item.SystemQuantity</td>
+                                <td><InputNumber class="form-control" @bind-Value="item.CountedQuantity" disabled="selectedSession.IsCompleted" /></td>
+                                <td>@item.Discrepancy.ToString("N0")</td>
+                                <td class="text-center">
+                                    @if (!selectedSession.IsCompleted)
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveItem(item)"><i class="fas fa-trash-alt"></i></button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (!selectedSession.IsCompleted)
+            {
+                <button class="btn btn-primary mt-3" @onclick="SaveChanges"><i class="fas fa-save me-1"></i> ذخیره شمارش</button>
+            }
+        }
+    </div>
+</div>
+<ProductSelectionDialog @ref="productDialog" AvailableProducts="availableProducts" OnProductSelected="HandleProductSelected" />
+
+@* <ProductSelectionDialog @ref="productDialog" AvailableProducts="availableProducts" Categories="categories" AllSubCategories="subCategories" OnProductAdded="HandleProductAdded" /> *@
+
+@code {
+    // --- Parameters & Data Sources ---
+    [Parameter] public List<StocktakeSession> stocktakeSessions { get; set; } = new();
+    [Parameter] public List<Product> availableProducts { get; set; } = new();
+    [Parameter] public List<Warehouse> warehouses { get; set; } = new();
+    [Parameter] public List<Category> categories { get; set; } = new();
+    [Parameter] public List<SubCategory> subCategories { get; set; } = new();
+
+    // --- Component State ---
+    private enum ViewMode { List, Create, Edit }
+    private ViewMode currentView = ViewMode.List;
+    private ProductSelectionDialog productDialog = new();
+    private StocktakeSession newSession = new();
+    private StocktakeSession? selectedSession;
+
+    // --- View Navigation ---
+    private void ShowListView() => currentView = ViewMode.List;
+    private void ShowCreateView()
+    {
+        newSession = new();
+        currentView = ViewMode.Create;
+    }
+    private void ShowEditView(StocktakeSession session)
+    {
+        selectedSession = session;
+        currentView = ViewMode.Edit;
+    }
+
+    private void HandleProductSelected(Product selectedProduct)
+    {
+        if (!newSession.Items.Any(i => i.ProductId == selectedProduct.Id))
+        {
+            newSession.Items.Add(new StocktakeItem
+            {
+                ProductId = selectedProduct.Id,
+                Product = selectedProduct,
+
+            });
+        }
+    }
+
+    // --- Logic Methods ---
+    private void HandleCreateSession()
+    {
+        // In a real app, you would fetch products of the selected warehouse
+        var productsInWarehouse = availableProducts; // For demo, we use all products
+
+        newSession.Id = stocktakeSessions.Any() ? stocktakeSessions.Max(s => s.Id) + 1 : 1;
+        newSession.Warehouse = warehouses.FirstOrDefault(w => w.Id == newSession.WarehouseId);
+        newSession.Items = productsInWarehouse.Select(p => new StocktakeItem
+        {
+            ProductId = p.Id,
+            Product = p,
+            SystemQuantity = p.StockQuantity // Set system quantity from product model
+        }).ToList();
+
+        stocktakeSessions.Insert(0, newSession);
+        ShowListView();
+    }
+
+    private void HandleProductAdded((Product product, decimal quantity) args)
+    {
+        if (selectedSession == null) return;
+        if (!selectedSession.Items.Any(i => i.ProductId == args.product.Id))
+        {
+            selectedSession.Items.Add(new StocktakeItem
+            {
+                ProductId = args.product.Id,
+                Product = args.product,
+                SystemQuantity = 0,
+                CountedQuantity = args.quantity
+            });
+        }
+    }
+
+    private void RemoveItem(StocktakeItem itemToRemove)
+    {
+        selectedSession?.Items.Remove(itemToRemove);
+    }
+
+    private void SaveChanges()
+    {
+        // Save logic for the 'selectedSession'
+        Console.WriteLine($"Saving items for session: {selectedSession?.Name}");
+    }
+
+    private async Task FinalizeSession(StocktakeSession session)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"آیا از نهایی کردن دوره شمارش '{session.Name}' مطمئن هستید؟ پس از این عمل، دوره قابل ویرایش نخواهد بود.");
+        if (confirmed)
+        {
+            session.IsCompleted = true;
+        }
+    }
+}

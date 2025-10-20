@@ -1,0 +1,382 @@
+﻿@page "/WarehouseIssue"
+
+@inject IJSRuntime JSRuntime
+
+<div class="container-fluid" id="form-container">
+
+    @* بخش نمایش پیام به کاربر *@
+    @if (!string.IsNullOrEmpty(userMessage))
+    {
+        <div class="alert @messageCssClass alert-dismissible fade show" role="alert">
+            @userMessage
+            <button type="button" class="btn-close" @onclick="() => userMessage = string.Empty" aria-label="Close"></button>
+        </div>
+    }
+
+    @* --- فرم اصلی حواله --- *@
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h3><i class="fas fa-file-export me-2"></i>@(isEditMode ? $"ویرایش حواله: {currentVoucher.VoucherNumber}" : "صدور حواله انبار جدید")</h3>
+        </div>
+        <div class="card-body">
+            <EditForm Model="@currentVoucher" OnValidSubmit="HandleSaveVoucher">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                @* -- اطلاعات اصلی حواله -- *@
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">شماره حواله</label>
+                        <div class="input-group">
+                            <InputText class="form-control" @bind-Value="currentVoucher.VoucherNumber" />
+                            <button class="btn btn-outline-secondary" type="button" @onclick="GenerateVoucherNumber" title="شماره خودکار"><i class="fas fa-magic"></i></button>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">تاریخ صدور</label>
+                        <InputDate class="form-control" @bind-Value="currentVoucher.IssueDate" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">انبار مبدا</label>
+                        <InputSelect class="form-select" @bind-Value="currentVoucher.WarehouseId">
+                            <option value="0">-- انتخاب انبار --</option>
+                            @foreach (var wh in warehouses)
+                            {
+                                <option value="@wh.Id">@wh.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">تحویل گیرنده</label>
+                        <InputText class="form-control" @bind-Value="currentVoucher.IssuedTo" placeholder="نام شخص یا بخش" />
+                    </div>
+                </div>
+
+                @* -- اطلاعات فاکتور (اختیاری) -- *@
+                <div class="row g-3 mb-4 p-3 border rounded">
+                    <div class="col-md-4">
+                        <label class="form-label">صدور بر اساس فاکتور؟</label>
+                        <InputRadioGroup @bind-Value="currentVoucher.IsBasedOnInvoice">
+                            <div class="form-check form-check-inline">
+                                <InputRadio class="form-check-input" Value="false" id="noInvoice" />
+                                <label class="form-check-label" for="noInvoice">خیر (حواله داخلی)</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <InputRadio class="form-check-input" Value="true" id="withInvoice" />
+                                <label class="form-check-label" for="withInvoice">بله (حواله فروش)</label>
+                            </div>
+                        </InputRadioGroup>
+                    </div>
+                    @if (currentVoucher.IsBasedOnInvoice)
+                    {
+                        <div class="col-md-4">
+                            <label class="form-label">شماره فاکتور</label>
+                            <InputText class="form-control" @bind-Value="currentVoucher.AssociatedInvoiceNumber" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">فایل فاکتور</label>
+                            <InputFile class="form-control" OnChange="OnInvoiceFileSelected" />
+                            @if (!string.IsNullOrEmpty(currentVoucher.UploadedInvoiceFileName))
+                            {
+                                <div class="form-text text-success">فایل: @currentVoucher.UploadedInvoiceFileName</div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                @* -- جدول اقلام حواله -- *@
+                <h5>اقلام حواله</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>کالا</th>
+                                <th>واحد</th>
+                                <th>مقدار</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in currentVoucher.Items)
+                            {
+                                <tr>
+                                    <td>@item.Product?.Name</td>
+                                    <td>@item.Product?.Unit?.Name</td>
+                                    <td><InputNumber class="form-control" @bind-Value="item.Quantity" /></td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemoveItem(item)"><i class="fas fa-times"></i></button></td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4">
+                                    <button type="button" class="btn btn-success" @onclick="() => productDialog.Open()"><i class="fas fa-plus me-1"></i>افزودن کالا</button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="mt-3">
+                    <button type="submit" class="btn @(isEditMode ? "btn-success" : "btn-primary") btn-lg"><i class="fas fa-save me-2"></i>@(isEditMode ? "ذخیره تغییرات" : "ذخیره حواله")</button>
+                    <button type="button" class="btn btn-secondary btn-lg" @onclick="ResetForm"><i class="fas fa-sync-alt me-2"></i>@(isEditMode ? "انصراف" : "فرم جدید")</button>
+                </div>
+
+            </EditForm>
+        </div>
+    </div>
+
+    <hr />
+
+    @* --- جدول حواله‌های ثبت شده --- *@
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h3><i class="fas fa-list-ul me-2"></i>لیست حواله‌های صادر شده</h3>
+        </div>
+        <div class="card-body">
+            @if (voucherList.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>شماره</th>
+                                <th>تاریخ</th>
+                                <th>انبار</th>
+                                <th>تحویل‌گیرنده</th>
+                                <th>نوع</th>
+                                <th class="text-center">وضعیت</th>
+                                <th class="text-center">عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var voucher in voucherList)
+                            {
+                                <tr class="@(isEditMode && currentVoucher?.Id == voucher.Id ? "table-info" : "")">
+                                    <td>@voucher.VoucherNumber</td>
+                                    <td>@voucher.IssueDate.ToShortDateString()</td>
+                                    <td>@(warehouses.FirstOrDefault(w => w.Id == voucher.WarehouseId)?.Name)</td>
+                                    <td>@voucher.IssuedTo</td>
+                                    <td>
+                                        <span class="badge @(voucher.IsBasedOnInvoice ? "bg-primary" : "bg-secondary")">
+                                            @(voucher.IsBasedOnInvoice ? "فروش" : "داخلی")
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge @(voucher.IsFinalized ? "bg-success" : "bg-warning text-dark")">
+                                            @(voucher.IsFinalized ? "نهایی شده" : "پیش‌نویس")
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        @if (!voucher.IsFinalized)
+                                        {
+                                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => StartEdit(voucher)" title="ویرایش"><i class="fas fa-pencil-alt"></i></button>
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(voucher)" title="حذف"><i class="fas fa-trash-alt"></i></button>
+                                            <button class="btn btn-sm btn-outline-success" @onclick="() => FinalizeVoucher(voucher)" title="نهایی کردن"><i class="fas fa-check-circle"></i></button>
+                                        }
+                                        <button class="btn btn-sm btn-outline-info" @onclick="() => PrintVoucher(voucher)" title="چاپ"><i class="fas fa-print"></i></button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle me-2"></i><span>هیچ حواله‌ای برای نمایش وجود ندارد.</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<ProductSelectionDialog @ref="productDialog" AvailableProducts="availableProducts" OnProductSelected="HandleProductSelected" />
+@* <ProductSelectionDialog @ref="productDialog"
+                        AvailableProducts="availableProducts"
+                        Categories="categories"
+                        AllSubCategories="subCategories"
+                        OnProductAdded="HandleProductAdded" /> *@
+
+@code {
+    // --- State ---
+    private WarehouseIssueVoucher currentVoucher = new();
+    private List<WarehouseIssueVoucher> voucherList = new();
+    private bool isEditMode = false;
+
+    // --- Data Sources ---
+    private List<Product> availableProducts = new();
+    private List<Warehouse> warehouses = new();
+
+    // --- Component Refs ---
+    private ProductSelectionDialog productDialog = new();
+
+    // --- File Upload State ---
+    private IBrowserFile? selectedFile;
+
+    protected override void OnInitialized()
+    {
+        // --- Mock Data ---
+        warehouses = new List<Warehouse> { new Warehouse { Id = 1, Name = "انبار اصلی" }, new Warehouse { Id = 2, Name = "انبار فروش" } };
+        availableProducts = new List<Product> {
+            new Product { Id = 1, Name = "لپ تاپ Dell", Barcode1 = "P1", Unit = new UnitOfMeasure { Name = "عدد" } },
+            new Product { Id = 2, Name = "کیبورد مکانیکی", Barcode1 = "P2", Unit = new UnitOfMeasure { Name = "عدد" } },
+            new Product { Id = 3, Name = "کابل شبکه (متری)", Barcode1 = "P3", Unit = new UnitOfMeasure { Name = "متر" } }
+        };
+
+        voucherList.Add(new WarehouseIssueVoucher
+        {
+            Id = 1,
+            VoucherNumber = "WI-2025-001",
+            IssueDate = DateTime.Now.AddDays(-5),
+            WarehouseId = 1,
+            IssuedTo = "بخش فنی",
+            IsFinalized = false,
+            Items = new List<WarehouseIssueVoucherItem> { new WarehouseIssueVoucherItem { ProductId = 2, Quantity = 5, Product = availableProducts[1] } }
+        });
+        voucherList.Add(new WarehouseIssueVoucher
+        {
+            Id = 2,
+            VoucherNumber = "WI-2025-002",
+            IssueDate = DateTime.Now.AddDays(-2),
+            WarehouseId = 2,
+            IssuedTo = "مشتری - شرکت رایان",
+            IsBasedOnInvoice = true,
+            AssociatedInvoiceNumber = "INV-9908",
+            IsFinalized = true,
+            Items = new List<WarehouseIssueVoucherItem> { new WarehouseIssueVoucherItem { ProductId = 1, Quantity = 1, Product = availableProducts[0] } }
+        });
+    }
+
+    // --- Form Logic ---
+    private async Task HandleSaveVoucher()
+    {
+        if (selectedFile != null)
+        {
+            currentVoucher.UploadedInvoiceFileName = selectedFile.Name;
+        }
+
+        if (isEditMode)
+        {
+            var index = voucherList.FindIndex(v => v.Id == currentVoucher.Id);
+            if (index != -1) voucherList[index] = currentVoucher;
+            ShowMessage("حواله با موفقیت ویرایش شد.", true);
+        }
+        else
+        {
+            currentVoucher.Id = voucherList.Any() ? voucherList.Max(v => v.Id) + 1 : 1;
+            if (string.IsNullOrEmpty(currentVoucher.VoucherNumber)) GenerateVoucherNumber();
+            voucherList.Insert(0, currentVoucher);
+            ShowMessage("حواله با موفقیت صادر شد.", true);
+        }
+
+        ResetForm();
+    }
+
+    private void ResetForm()
+    {
+        currentVoucher = new();
+        isEditMode = false;
+        selectedFile = null;
+    }
+
+    private void GenerateVoucherNumber()
+    {
+        currentVoucher.VoucherNumber = $"WI-{DateTime.Now.Ticks % 100000}";
+    }
+
+    private void OnInvoiceFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        currentVoucher.UploadedInvoiceFileName = selectedFile.Name;
+    }
+
+    // --- Item Management ---
+    private void HandleProductSelected(Product selectedProduct)
+    {
+        if (!currentVoucher.Items.Any(i => i.ProductId == selectedProduct.Id))
+        {
+            currentVoucher.Items.Add(new WarehouseIssueVoucherItem
+            {
+                ProductId = selectedProduct.Id,
+                Product = selectedProduct,
+                Quantity = 1
+            });
+        }
+    }
+
+    private void RemoveItem(WarehouseIssueVoucherItem item)
+    {
+        currentVoucher.Items.Remove(item);
+    }
+
+    // --- Table Actions ---
+    private async Task StartEdit(WarehouseIssueVoucher voucherToEdit)
+    {
+        // Create a copy for editing to avoid modifying the list directly
+        currentVoucher = new WarehouseIssueVoucher
+        {
+            Id = voucherToEdit.Id,
+            VoucherNumber = voucherToEdit.VoucherNumber,
+            IssueDate = voucherToEdit.IssueDate,
+            WarehouseId = voucherToEdit.WarehouseId,
+            IssuedTo = voucherToEdit.IssuedTo,
+            IsBasedOnInvoice = voucherToEdit.IsBasedOnInvoice,
+            AssociatedInvoiceNumber = voucherToEdit.AssociatedInvoiceNumber,
+            UploadedInvoiceFileName = voucherToEdit.UploadedInvoiceFileName,
+            IsFinalized = voucherToEdit.IsFinalized,
+            Items = new List<WarehouseIssueVoucherItem>(voucherToEdit.Items) // Important to copy items too
+        };
+        isEditMode = true;
+        await JSRuntime.InvokeVoidAsync("document.getElementById", "form-container", "scrollIntoView");
+    }
+
+    private async Task ConfirmDelete(WarehouseIssueVoucher voucherToDelete)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"آیا از حذف حواله شماره {voucherToDelete.VoucherNumber} مطمئن هستید؟");
+        if (confirmed)
+        {
+            voucherList.Remove(voucherToDelete);
+            ShowMessage("حواله با موفقیت حذف شد.", true);
+        }
+    }
+
+    private async Task FinalizeVoucher(WarehouseIssueVoucher voucher)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"آیا از نهایی کردن حواله شماره {voucher.VoucherNumber} مطمئن هستید؟ این عمل غیرقابل بازگشت است.");
+        if (confirmed)
+        {
+            voucher.IsFinalized = true;
+            ShowMessage("حواله نهایی شد.", true);
+        }
+    }
+
+    private void PrintVoucher(WarehouseIssueVoucher voucher)
+    {
+        JSRuntime.InvokeVoidAsync("alert", $"عملیات چاپ برای حواله شماره {voucher.VoucherNumber} فراخوانی شد.");
+    }
+
+    // --- UI Helpers ---
+    private string? userMessage;
+    private string messageCssClass = string.Empty;
+
+    private void ShowMessage(string message, bool isSuccess)
+    {
+        userMessage = message;
+        messageCssClass = isSuccess ? "alert-success" : "alert-danger";
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(5000);
+            userMessage = null;
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+
+    // Placeholder class for Warehouse
+    public class Warehouse
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,40 @@
+﻿<Dialog @ref="dialog">
+    <Title>افزودن زیرگروه جدید</Title>
+    <Body>
+        <div class="mb-3">
+            <label for="subCategoryName" class="form-label">نام زیرگروه:</label>
+            <input @bind="newSubCategoryName" type="text" id="subCategoryName" class="form-control" placeholder="مثال: لپ تاپ و تبلت" />
+        </div>
+    </Body>
+    <Footer>
+        <button type="button" class="btn btn-secondary" @onclick="HandleCancel">انصراف</button>
+        <button type="button" class="btn btn-primary" @onclick="HandleSave">ذخیره</button>
+    </Footer>
+</Dialog>
+
+@code {
+    [Parameter] public EventCallback<string> OnSave { get; set; }
+
+    private Dialog dialog = new();
+    private string newSubCategoryName = "";
+
+    public void Open()
+    {
+        dialog.Open();
+    }
+    private void HandleCancel()
+    {
+        newSubCategoryName = "";
+        dialog.Close();
+    }
+
+    private async Task HandleSave()
+    {
+        if (!string.IsNullOrWhiteSpace(newSubCategoryName))
+        {
+            await OnSave.InvokeAsync(newSubCategoryName);
+            newSubCategoryName = ""; // Clear for next time
+            dialog.Close();
+        }
+    }
+}

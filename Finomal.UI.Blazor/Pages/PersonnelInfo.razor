@@ -1,0 +1,265 @@
+﻿@page "/PersonnelInfo"
+@using Finomal.UI.Blazor.Components.model
+@inject IJSRuntime JSRuntime
+
+<div id="form-container">
+    <h3><i class="fas fa-user-edit me-2"></i>@(isEditMode ? $"ویرایش اطلاعات: {currentPerson.Identity.FirstName} {currentPerson.Identity.LastName}" : "افزودن پرسنل جدید")</h3>
+
+    <EditForm Model="currentPerson" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+
+        <div class="row">
+            @* --- ستون اصلی برای فرم (بخش راست) --- *@
+            <div class="col-lg-9">
+
+                @* --- کارت اطلاعات هویتی --- *@
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header"><h5><i class="fas fa-id-card me-2"></i>اطلاعات هویتی</h5></div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4"><label>کد پرسنلی</label><InputText class="form-control" @bind-Value="currentPerson.PersonnelCode" /></div>
+                            <div class="col-md-4"><label>نام<span class="text-danger">*</span></label><InputText class="form-control" @bind-Value="currentPerson.Identity.FirstName" /></div>
+                            <div class="col-md-4"><label>نام خانوادگی<span class="text-danger">*</span></label><InputText class="form-control" @bind-Value="currentPerson.Identity.LastName" /></div>
+                            <div class="col-md-4"><label>نام پدر</label><InputText class="form-control" @bind-Value="currentPerson.Identity.FatherName" /></div>
+                            <div class="col-md-4"><label>تاریخ تولد</label><InputDate class="form-control" @bind-Value="currentPerson.Identity.DateOfBirth" /></div>
+                            <div class="col-md-4"><label>محل تولد</label><InputText class="form-control" @bind-Value="currentPerson.Identity.BirthPlace" /></div>
+                            <div class="col-md-4"><label>کد ملی<span class="text-danger">*</span></label><InputText class="form-control" @bind-Value="currentPerson.Identity.NationalId" /></div>
+                            <div class="col-md-4"><label>شماره شناسنامه</label><InputText class="form-control" @bind-Value="currentPerson.Identity.CertificateNumber" /></div>
+                            <div class="col-md-4"><label>محل صدور</label><InputText class="form-control" @bind-Value="currentPerson.Identity.IssuePlace" /></div>
+                            <div class="col-md-4"><label>جنسیت</label><InputSelect class="form-select" @bind-Value="currentPerson.Identity.Gender"><option>مرد</option><option>زن</option></InputSelect></div>
+                        </div>
+                    </div>
+                </div>
+
+                @* --- کارت اطلاعات تکمیلی --- *@
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header"><h5><i class="fas fa-info-circle me-2"></i>اطلاعات تکمیلی</h5></div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3"><label>وضعیت پرسنل</label><InputSelect class="form-select" @bind-Value="currentPerson.Complementary.Status"><option>فعال</option><option>غیرفعال</option><option>ترک کار</option></InputSelect></div>
+                            <div class="col-md-3"><label>وضعیت تاهل</label><InputSelect class="form-select" @bind-Value="currentPerson.Complementary.MaritalStatus"><option>مجرد</option><option>متاهل</option></InputSelect></div>
+                            <div class="col-md-3"><label>تعداد فرزندان</label><InputNumber class="form-control" @bind-Value="currentPerson.Complementary.ChildrenCount" /></div>
+                            <div class="col-md-3"><label>وضعیت سربازی</label><InputSelect class="form-select" @bind-Value="currentPerson.Complementary.MilitaryServiceStatus"><option>مشمول</option><option>پایان خدمت</option><option>معافیت</option></InputSelect></div>
+                            <div class="col-md-3"><label>مدرک تحصیلی</label><InputText class="form-control" @bind-Value="currentPerson.Complementary.EducationLevel" /></div>
+                            <div class="col-md-3"><label>رشته تحصیلی</label><InputText class="form-control" @bind-Value="currentPerson.Complementary.FieldOfStudy" /></div>
+                            <div class="col-md-3"><label>واحد سازمانی</label><InputSelect class="form-select" @bind-Value="currentPerson.Complementary.OrganizationalUnit"><option value="false">ندارد</option><option value="true">دارد</option></InputSelect></div>
+                            <div class="col-md-3"><label>وضعیت ایثارگری</label><InputSelect class="form-select" @bind-Value="currentPerson.Complementary.IsVeteran"><option value="false">ندارد</option><option value="true">دارد</option></InputSelect></div>
+                        </div>
+                    </div>
+                </div>
+
+                @* --- کارت اطلاعات حساب --- *@
+                <div class="card shadow-sm">
+                    <div class="card-header"><h5><i class="fas fa-university me-2"></i>اطلاعات حساب و پرداخت</h5></div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4"><label>نام بانک</label><InputText class="form-control" @bind-Value="currentPerson.Account.BankName" /></div>
+                            <div class="col-md-4"><label>نام شعبه</label><InputText class="form-control" @bind-Value="currentPerson.Account.BranchName" /></div>
+                            <div class="col-md-4"><label>روش پرداخت</label><InputSelect class="form-select" @bind-Value="currentPerson.Account.PaymentFrequency"><option>ماهیانه</option><option>ساعتی</option></InputSelect></div>
+                            <div class="col-md-6"><label>شماره حساب</label><InputText class="form-control" @bind-Value="currentPerson.Account.AccountNumber" /></div>
+                            <div class="col-md-6"><label>شماره شبا (IBAN)</label><InputText class="form-control" @bind-Value="currentPerson.Account.Iban" placeholder="IR..." /></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            @* --- ستون کناری برای عکس و اطلاعات تماس (بخش چپ) --- *@
+            <div class="col-lg-3">
+                @* --- کارت عکس پرسنلی --- *@
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header"><h5><i class="fas fa-portrait me-2"></i>عکس پرسنلی</h5></div>
+                    <div class="card-body text-center">
+                        <img src="@(currentPerson.Identity.ProfilePictureUrl ?? "images/default-avatar.png")" class="img-thumbnail mb-2" alt="Avatar" style="width:150px; height:150px;" />
+                        <InputFile OnChange="OnPhotoSelected" class="form-control form-control-sm" accept=".jpg, .jpeg, .png" />
+                        @if (currentPerson.Identity.ProfilePictureUrl != null)
+                        {
+                            <button type="button" class="btn btn-sm btn-link text-danger" @onclick="RemovePhoto">حذف عکس</button>
+                        }
+                    </div>
+                </div>
+
+                @* --- کارت اطلاعات تماس --- *@
+                <div class="card shadow-sm">
+                    <div class="card-header"><h5><i class="fas fa-phone me-2"></i>اطلاعات تماس</h5></div>
+                    <div class="card-body">
+                        <div class="mb-2"><label>شماره تماس</label><InputText class="form-control" @bind-Value="currentPerson.Contact.PhoneNumber" /></div>
+                        <div class="mb-2"><label>ایمیل</label><InputText type="email" class="form-control" @bind-Value="currentPerson.Contact.Email" /></div>
+                        <div class="mb-2"><label>آدرس</label><InputTextArea class="form-control" @bind-Value="currentPerson.Contact.Address" rows="3" /></div>
+                        <div class="mb-2"><label>کد پستی</label><InputText class="form-control" @bind-Value="currentPerson.Contact.PostalCode" /></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <hr />
+        <div class="mt-3">
+            <button type="submit" class="btn @(isEditMode ? "btn-success" : "btn-primary") btn-lg">
+                <i class="fas fa-save me-2"></i> @(isEditMode ? "ذخیره تغییرات" : "ذخیره اطلاعات پرسنل")
+            </button>
+            @if (isEditMode)
+            {
+                <button type="button" class="btn btn-secondary btn-lg" @onclick="CancelEdit">
+                    <i class="fas fa-times me-2"></i> انصراف
+                </button>
+            }
+            <ValidationSummary />
+        </div>
+    </EditForm>
+</div>
+
+
+<hr />
+
+@* ==================== جدول لیست پرسنل ==================== *@
+<div class="card shadow-sm mt-4">
+    <div class="card shadow-sm mt-4">
+        <div class="card-header">
+            <h3><i class="fas fa-users me-2"></i>لیست پرسنل</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>عکس</th>
+                            <th>کد پرسنلی</th>
+                            <th>نام و نام خانوادگی</th>
+                            <th>کد ملی</th>
+                            <th>واحد سازمانی</th>
+                            <th class="text-center">وضعیت</th>
+                            <th class="text-center">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var person in personnelList)
+                        {
+                            <tr class="@(isEditMode && currentPerson.Id == person.Id ? "table-info" : "")">
+                                <td><img src="@(person.Identity.ProfilePictureUrl ?? "images/default-avatar.png")" class="rounded-circle" style="width:40px; height:40px;" /></td>
+                                <td>@person.PersonnelCode</td>
+                                <td>@person.Identity.FirstName @person.Identity.LastName</td>
+                                <td>@person.Identity.NationalId</td>
+                                <td>@person.Complementary.OrganizationalUnit</td>
+                                <td class="text-center">
+                                    <span class="badge @(person.Complementary.Status == "فعال" ? "bg-success" : "bg-secondary")">
+                                        @person.Complementary.Status
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEdit(person)" title="ویرایش">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    private List<Person> personnelList = new();
+    private Person currentPerson = new();
+    private bool isEditMode = false;
+    private string activeTab = "identity";
+
+    protected override void OnInitialized()
+    {
+        // --- Mock Data ---
+        if (!personnelList.Any())
+        {
+            personnelList.Add(new Person
+            {
+                Id = 1,
+                PersonnelCode = "P-1001",
+                Identity = new PersonIdentityInfo { FirstName = "علی", LastName = "رضایی", NationalId = "1234567890" },
+                Complementary = new PersonComplementaryInfo { OrganizationalUnit = "فنی", Status = "فعال" }
+            });
+            personnelList.Add(new Person
+            {
+                Id = 2,
+                PersonnelCode = "P-1002",
+                Identity = new PersonIdentityInfo { FirstName = "سارا", LastName = "محمدی", NationalId = "0987654321" },
+                Complementary = new PersonComplementaryInfo { OrganizationalUnit = "مالی", Status = "غیرفعال" }
+            });
+        }
+    }
+
+    private void SetActiveTab(string tabName)
+    {
+        activeTab = tabName;
+    }
+
+
+    private async Task OnPhotoSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            // Max 500 KB
+            var buffer = new byte[file.Size];
+            await file.OpenReadStream(512000).ReadAsync(buffer);
+            var base64String = Convert.ToBase64String(buffer);
+            currentPerson.Identity.ProfilePictureUrl = $"data:{file.ContentType};base64,{base64String}";
+        }
+    }
+
+    private void RemovePhoto()
+    {
+        currentPerson.Identity.ProfilePictureUrl = null;
+    }
+
+    private async Task StartEdit(Person personToEdit)
+    {
+        // Create a deep copy for editing to avoid changing the list directly
+        currentPerson = new Person
+        {
+            Id = personToEdit.Id,
+            PersonnelCode = personToEdit.PersonnelCode,
+            Identity = new PersonIdentityInfo { /* copy all properties... */ FirstName = personToEdit.Identity.FirstName, LastName = personToEdit.Identity.LastName, NationalId = personToEdit.Identity.NationalId, ProfilePictureUrl = personToEdit.Identity.ProfilePictureUrl },
+            Contact = new PersonContactInfo { /* copy all properties... */ },
+            Complementary = new PersonComplementaryInfo { /* copy all properties... */ OrganizationalUnit = personToEdit.Complementary.OrganizationalUnit, Status = personToEdit.Complementary.Status },
+            SocialSecurity = new PersonSocialSecurityInfo { /* copy all properties... */ },
+            SupplementalInsurance = new PersonSupplementalInsuranceInfo { /* copy all properties... */ },
+            Account = new PersonAccountInfo { /* copy all properties... */ }
+        };
+
+        isEditMode = true;
+        activeTab = "identity"; // Reset to the first tab on edit
+        await JSRuntime.InvokeVoidAsync("document.getElementById", "form-container", "scrollIntoView");
+    }
+
+    private void CancelEdit()
+    {
+        currentPerson = new();
+        isEditMode = false;
+    }
+
+    private void HandleValidSubmit()
+    {
+        if (isEditMode)
+        {
+            // --- Update Logic ---
+            var index = personnelList.FindIndex(p => p.Id == currentPerson.Id);
+            if (index != -1)
+            {
+                personnelList[index] = currentPerson;
+                // Show success message
+            }
+        }
+        else
+        {
+            // --- Create Logic ---
+            currentPerson.Id = personnelList.Any() ? personnelList.Max(p => p.Id) + 1 : 1;
+            personnelList.Add(currentPerson);
+            // Show success message
+        }
+
+        // Reset the form to "create new" mode
+        CancelEdit();
+    }
+}

@@ -1,0 +1,51 @@
+﻿@using Finomal.UI.Blazor.Components.Layout
+@using Finomal.UI.Blazor.Pages
+@using Microsoft.AspNetCore.Components.Authorization
+<!DOCTYPE html>
+<html lang="en" dir="rtl">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />    
+    <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["Finomal.UI.Blazor.styles.css"]" />
+    <ImportMap />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <HeadOutlet />
+</head>
+
+<body>
+     <Routes @rendermode="InteractiveServer" />
+@*     <CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    @if (context.User.Identity?.IsAuthenticated != true)
+                    {
+                        <RedirectToLogin />
+                    }
+                    else
+                    {
+                        <p>شما دسترسی لازم برای مشاهده این منبع را ندارید.</p>
+                    }
+                </NotAuthorized>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>پیدا نشد</PageTitle>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <p role="alert">متاسفانه صفحه‌ای در این آدرس وجود ندارد.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState> *@
+    <script src="~/lib/scripts.js"></script>
+    <script src="_framework/blazor.web.js"></script>
+</body>
+
+</html>

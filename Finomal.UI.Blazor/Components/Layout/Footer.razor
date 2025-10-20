@@ -1,0 +1,47 @@
+﻿@using System.Security.Principal
+@rendermode InteractiveServer
+
+@implements IDisposable
+
+<footer class="bg-dark text-white py-3 d-flex fixed-bottom w-100">
+    <div class="container text-center">
+        <span>
+            نام کاربر سیستم: <strong>@UserName</strong>
+        </span>
+        <span class="mx-3">|</span>
+        <span>
+            ساعت فعلی: <strong>@CurrentTime.ToString("HH:mm:ss")</strong>
+        </span>
+    </div>
+</footer>
+
+@code {
+    private DateTime CurrentTime { get; set; } = DateTime.Now;
+    private string UserName { get; set; } = "نامشخص";
+    private System.Threading.Timer? _timer;
+
+    protected override void OnInitialized()
+    {
+        // دریافت نام کاربر سیستم
+        // از Environment.UserName برای سازگاری بیشتر استفاده می‌شود
+        UserName = Environment.UserName;
+
+        // ایجاد یک تایمر که هر ثانیه یکبار متد UpdateTime را فراخوانی می‌کند
+        _timer = new System.Threading.Timer(UpdateTime, null, 0, 1000);
+    }
+
+    private void UpdateTime(object? state)
+    {
+        CurrentTime = DateTime.Now;
+
+        // درخواست رندر مجدد کامپوننت برای نمایش زمان جدید
+        // InvokeAsync برای اطمینان از اجرای کد در رشته صحیح UI استفاده می‌شود
+        InvokeAsync(StateHasChanged);
+    }
+
+    // این متد برای پاکسازی منابع (تایمر) هنگام حذف کامپوننت استفاده می‌شود
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

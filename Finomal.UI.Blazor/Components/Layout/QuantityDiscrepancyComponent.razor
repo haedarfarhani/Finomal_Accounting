@@ -1,0 +1,36 @@
+﻿@using Finomal.UI.Blazor.Components.model
+<div class="card">
+    <div class="card-header">گزارش مغایرت تعدادی</div>
+    <div class="card-body">
+        <select class="form-select mb-3" @onchange="e => selectedSessionId = int.Parse(e.Value.ToString())">
+            <option value="0">-- یک دوره تکمیل شده را انتخاب کنید --</option>
+            @foreach (var s in completedSessions)
+            {
+                <option value="@s.Id">@s.Name</option>
+            }
+        </select>
+
+        @if (SelectedSession != null)
+        {
+            <table class="table">
+                <thead><tr><th>کالا</th><th>موجودی سیستم</th><th>شمارش شده</th><th>مغایرت</th></tr></thead>
+                <tbody>
+                    @foreach (var item in SelectedSession.Items.Where(i => i.Discrepancy != 0))
+                    {
+                        <tr class="@(item.Discrepancy > 0 ? "table-success" : "table-danger")">
+                            <td>@item.Product?.Name</td>
+                            <td>@item.SystemQuantity</td>
+                            <td>@item.CountedQuantity</td>
+                            <td>@item.Discrepancy.ToString("N0")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+@code {
+    [Parameter] public List<StocktakeSession> completedSessions { get; set; } = new();
+    private int selectedSessionId;
+    private StocktakeSession? SelectedSession => completedSessions.FirstOrDefault(s => s.Id == selectedSessionId);
+}

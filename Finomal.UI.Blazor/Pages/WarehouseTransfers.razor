@@ -1,0 +1,366 @@
+﻿@page "/WarehouseTransfer"
+@inject IJSRuntime JSRuntime
+
+<div class="container-fluid" id="form-container">
+
+    @* بخش نمایش پیام به کاربر *@
+    @if (!string.IsNullOrEmpty(userMessage))
+    {
+        <div class="alert @messageCssClass alert-dismissible fade show" role="alert">
+            @userMessage
+            <button type="button" class="btn-close" @onclick="() => userMessage = string.Empty" aria-label="Close"></button>
+        </div>
+    }
+
+    @* --- فرم اصلی انتقال --- *@
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h3><i class="fas fa-exchange-alt me-2"></i>@(isEditMode ? $"ویرایش برگه انتقال: {currentTransfer.TransferNumber}" : "ایجاد برگه انتقال جدید")</h3>
+        </div>
+        <div class="card-body">
+            <EditForm Model="@currentTransfer" OnValidSubmit="HandleSaveTransfer">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                @* -- اطلاعات اصلی -- *@
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">شماره برگه</label>
+                        <div class="input-group">
+                            <InputText class="form-control" @bind-Value="currentTransfer.TransferNumber" />
+                            <button class="btn btn-outline-secondary" type="button" @onclick="GenerateTransferNumber" title="شماره خودکار"><i class="fas fa-magic"></i></button>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">تاریخ انتقال</label>
+                        <InputDate class="form-control" @bind-Value="currentTransfer.TransferDate" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">انبار مبدا</label>
+                        <InputSelect class="form-select" @bind-Value="currentTransfer.SourceWarehouseId">
+                            <option value="0">-- انتخاب کنید --</option>
+                            @foreach (var wh in warehouses)
+                            {
+                                <option value="@wh.Id">@wh.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">انبار مقصد</label>
+                        <InputSelect class="form-select" @bind-Value="currentTransfer.DestinationWarehouseId">
+                            <option value="0">-- انتخاب کنید --</option>
+                            @foreach (var wh in warehouses.Where(w => w.Id != currentTransfer.SourceWarehouseId))
+                            {
+                                <option value="@wh.Id">@wh.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">نوع حمل</label>
+                        <InputText class="form-control" @bind-Value="currentTransfer.ShippingMethod" placeholder="پیک، وانت، داخلی و..." />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">تحویل دهنده</label>
+                        <InputText class="form-control" @bind-Value="currentTransfer.DeliveredBy" placeholder="نام راننده یا مسئول" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">شماره پیگیری/بارنامه</label>
+                        <InputText class="form-control" @bind-Value="currentTransfer.TrackingNumber" />
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <label class="form-label">شرح</label>
+                        <InputTextArea class="form-control" @bind-Value="currentTransfer.Description" placeholder="توضیحات بیشتر در مورد انتقال..." />
+                    </div>
+                </div>
+
+                @* -- جدول اقلام انتقالی -- *@
+                <h5>اقلام انتقالی</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>کالا</th>
+                                <th>واحد</th>
+                                <th>مقدار</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in currentTransfer.Items)
+                            {
+                                <tr>
+                                    <td>@item.Product?.Name</td>
+                                    <td>@item.Product?.Unit?.Name</td>
+                                    <td><InputNumber class="form-control" @bind-Value="item.Quantity" /></td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemoveItem(item)"><i class="fas fa-times"></i></button></td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4">
+                                    <button type="button" class="btn btn-success" @onclick="() => productDialog.Open()"><i class="fas fa-plus me-1"></i>افزودن کالا</button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="mt-3">
+                    <button type="submit" class="btn @(isEditMode ? "btn-success" : "btn-primary") btn-lg"><i class="fas fa-save me-2"></i>@(isEditMode ? "ذخیره تغییرات" : "ثبت برگه انتقال")</button>
+                    <button type="button" class="btn btn-secondary btn-lg" @onclick="ResetForm"><i class="fas fa-sync-alt me-2"></i>@(isEditMode ? "انصراف" : "فرم جدید")</button>
+                </div>
+
+            </EditForm>
+        </div>
+    </div>
+
+    <hr />
+
+    @* --- جدول برگه‌های انتقال ثبت شده --- *@
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h3><i class="fas fa-list-ul me-2"></i>لیست انتقالات ثبت شده</h3>
+        </div>
+        <div class="card-body">
+            @if (transferList.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>شماره</th>
+                                <th>تاریخ</th>
+                                <th>انبار مبدا</th>
+                                <th>انبار مقصد</th>
+                                <th class="text-center">وضعیت</th>
+                                <th class="text-center">عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var transfer in transferList)
+                            {
+                                <tr class="@(isEditMode && currentTransfer?.Id == transfer.Id ? "table-info" : "")">
+                                    <td>@transfer.TransferNumber</td>
+                                    <td>@transfer.TransferDate.ToShortDateString()</td>
+                                    <td>@(warehouses.FirstOrDefault(w => w.Id == transfer.SourceWarehouseId)?.Name)</td>
+                                    <td>@(warehouses.FirstOrDefault(w => w.Id == transfer.DestinationWarehouseId)?.Name)</td>
+                                    <td class="text-center">
+                                        <span class="badge @(transfer.IsFinalized ? "bg-success" : "bg-warning text-dark")">
+                                            @(transfer.IsFinalized ? "نهایی شده" : "پیش‌نویس")
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        @if (!transfer.IsFinalized)
+                                        {
+                                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => StartEdit(transfer)" title="ویرایش"><i class="fas fa-pencil-alt"></i></button>
+                                            <button class="btn btn-sm btn-outline-success" @onclick="() => FinalizeTransfer(transfer)" title="نهایی کردن"><i class="fas fa-check-circle"></i></button>
+                                        }
+                                        <button class="btn btn-sm btn-outline-info" @onclick="() => PrintTransfer(transfer)" title="چاپ"><i class="fas fa-print"></i></button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle me-2"></i><span>هیچ برگه انتقالی برای نمایش وجود ندارد.</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+<ProductSelectionDialog @ref="productDialog" AvailableProducts="availableProducts" OnProductSelected="HandleProductSelected" />
+
+@* <ProductSelectionDialog @ref="productDialog"
+                        AvailableProducts="availableProducts"
+                        Categories="categories"
+                        AllSubCategories="subCategories"
+                        OnProductAdded="HandleProductAdded" /> *@
+
+@code {
+    // --- State ---
+    private WarehouseTransfer currentTransfer = new();
+    private List<WarehouseTransfer> transferList = new();
+    private bool isEditMode = false;
+
+    // --- Data Sources ---
+    private List<Product> availableProducts = new();
+    private List<Warehouse> warehouses = new();
+    private List<Category> categories = new();
+    private List<SubCategory> subCategories = new();
+
+    // --- Component Refs ---
+    private ProductSelectionDialog productDialog = new();
+
+    protected override void OnInitialized()
+    {
+        // --- Mock Data ---
+        warehouses = new List<Warehouse> {
+            new Warehouse { Id = 1, Name = "انبار مرکزی" },
+            new Warehouse { Id = 2, Name = "انبار فروش" },
+            new Warehouse { Id = 3, Name = "انبار مواد اولیه" }
+        };
+        categories = new List<Category> { new Category { Id = 1, Name = "قطعات کامپیوتر" } };
+        subCategories = new List<SubCategory> { new SubCategory { Id = 1, CategoryId = 1, Name = "CPU" } };
+        availableProducts = new List<Product> {
+            new Product { Id = 1, Name = "پردازنده Core i5", CategoryId = 1, Unit = new UnitOfMeasure { Name = "عدد" } },
+            new Product { Id = 2, Name = "رم 8GB DDR4", CategoryId = 1, Unit = new UnitOfMeasure { Name = "عدد" } }
+        };
+
+        transferList.Add(new WarehouseTransfer
+        {
+            Id = 1,
+            TransferNumber = "TR-2025-001",
+            SourceWarehouseId = 3,
+            DestinationWarehouseId = 1,
+            IsFinalized = true,
+            Items = new List<WarehouseTransferItem> { new WarehouseTransferItem { ProductId = 2, Quantity = 50, Product = availableProducts[1] } }
+        });
+    }
+
+    // --- Form Logic ---
+    private void HandleSaveTransfer()
+    {
+        if (currentTransfer.SourceWarehouseId == currentTransfer.DestinationWarehouseId)
+        {
+            ShowMessage("انبار مبدا و مقصد نمی‌توانند یکسان باشند.", false);
+            return;
+        }
+
+        if (isEditMode)
+        {
+            var index = transferList.FindIndex(t => t.Id == currentTransfer.Id);
+            if (index != -1) transferList[index] = currentTransfer;
+            ShowMessage("برگه انتقال با موفقیت ویرایش شد.", true);
+        }
+        else
+        {
+            currentTransfer.Id = transferList.Any() ? transferList.Max(t => t.Id) + 1 : 1;
+            if (string.IsNullOrEmpty(currentTransfer.TransferNumber)) GenerateTransferNumber();
+            transferList.Insert(0, currentTransfer);
+            ShowMessage("برگه انتقال با موفقیت ثبت شد.", true);
+        }
+        ResetForm();
+    }
+
+    private void ResetForm()
+    {
+        currentTransfer = new();
+        isEditMode = false;
+    }
+
+    private void GenerateTransferNumber()
+    {
+        currentTransfer.TransferNumber = $"TR-{DateTime.Now.Ticks % 100000}";
+    }
+    private void HandleProductSelected(Product selectedProduct)
+    {
+        if (!currentTransfer.Items.Any(i => i.ProductId == selectedProduct.Id))
+        {
+            currentTransfer.Items.Add(new WarehouseTransferItem
+            {
+                ProductId = selectedProduct.Id,
+                Product = selectedProduct,
+                Quantity = 1
+            });
+        }
+    }
+    // --- Item Management ---
+    private void HandleProductAdded((Product product, decimal quantity) args)
+    {
+        var existingItem = currentTransfer.Items.FirstOrDefault(i => i.ProductId == args.product.Id);
+        if (existingItem != null)
+        {
+            existingItem.Quantity += args.quantity;
+        }
+        else
+        {
+            currentTransfer.Items.Add(new WarehouseTransferItem
+            {
+                ProductId = args.product.Id,
+                Product = args.product,
+                Quantity = args.quantity
+            });
+        }
+    }
+
+    private void RemoveItem(WarehouseTransferItem item)
+    {
+        currentTransfer.Items.Remove(item);
+    }
+
+    // --- Table Actions ---
+    private async Task StartEdit(WarehouseTransfer transferToEdit)
+    {
+        isEditMode = true;
+        currentTransfer = new WarehouseTransfer // Deep copy
+        {
+            Id = transferToEdit.Id,
+            TransferNumber = transferToEdit.TransferNumber,
+            TransferDate = transferToEdit.TransferDate,
+            SourceWarehouseId = transferToEdit.SourceWarehouseId,
+            DestinationWarehouseId = transferToEdit.DestinationWarehouseId,
+            ShippingMethod = transferToEdit.ShippingMethod,
+            DeliveredBy = transferToEdit.DeliveredBy,
+            TrackingNumber = transferToEdit.TrackingNumber,
+            Description = transferToEdit.Description,
+            IsFinalized = transferToEdit.IsFinalized,
+            Items = transferToEdit.Items.Select(i => new WarehouseTransferItem
+            {
+                Id = i.Id,
+                ProductId = i.ProductId,
+                Product = i.Product,
+                Quantity = i.Quantity
+            }).ToList()
+        };
+        await JSRuntime.InvokeVoidAsync("document.getElementById", "form-container", "scrollIntoView");
+    }
+
+    private async Task FinalizeTransfer(WarehouseTransfer transfer)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"آیا از نهایی کردن برگه {transfer.TransferNumber} مطمئن هستید؟");
+        if (confirmed)
+        {
+            transfer.IsFinalized = true;
+            ShowMessage("برگه انتقال نهایی شد.", true);
+        }
+    }
+
+    private void PrintTransfer(WarehouseTransfer transfer)
+    {
+        JSRuntime.InvokeVoidAsync("alert", $"عملیات چاپ برای برگه {transfer.TransferNumber} فراخوانی شد.");
+    }
+
+    // --- UI Helpers ---
+    private string? userMessage;
+    private string messageCssClass = string.Empty;
+
+    private void ShowMessage(string message, bool isSuccess)
+    {
+        userMessage = message;
+        messageCssClass = isSuccess ? "alert-success" : "alert-danger";
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(5000);
+            userMessage = null;
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+
+    // Placeholder class for Warehouse
+    public class Warehouse
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+}

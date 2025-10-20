@@ -1,0 +1,59 @@
+﻿@using Finomal.UI.Blazor.Components.model
+@* ساختار این کامپوننت بسیار شبیه به مغایرت تعدادی است، فقط جدول آن فرق دارد *@
+<div class="card">
+    <div class="card-header">گزارش مغایرت ریالی</div>
+    <div class="card-body">
+        <select class="form-select mb-3" @onchange="e => selectedSessionId = int.Parse(e.Value.ToString())">
+            @* ... Dropdown is the same as QuantityDiscrepancyComponent ... *@
+        </select>
+        @if (SelectedSession != null)
+        {
+            <table class="table">
+                <thead><tr><th>کالا</th><th>مغایرت تعدادی</th><th>ارزش واحد</th><th>ارزش مغایرت (تومان)</th></tr></thead>
+                <tbody>
+                    @foreach (var item in SelectedSession.Items.Where(i => i.Discrepancy != 0))
+                    {
+                        <tr>
+                            <td>@item.Product?.Name</td>
+                            <td>@item.Discrepancy</td>
+                            <td>@item.Product?.SellingPrice.ToString("N0")</td>
+                            <td>@item.DiscrepancyValue.ToString("N0")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot><tr class="fw-bold"><td>جمع کل</td><td colspan="3">@SelectedSession.Items.Sum(i => i.DiscrepancyValue).ToString("N0") تومان</td></tr></tfoot>
+            </table>
+        }
+    </div>
+</div>
+@code {
+    [Parameter] public List<StocktakeSession> completedSessions { get; set; } = new();
+    private int selectedSessionId;
+    private StocktakeSession? SelectedSession => completedSessions.FirstOrDefault(s => s.Id == selectedSessionId);
+}
+
+<div class="card">
+    <div class="card-header">وضعیت شمارش کالاها</div>
+    <div class="card-body">
+        <h5>کالاهای شمارش نشده</h5>
+        <table class="table table-sm">
+            @foreach (var item in ActiveSession?.Items.Where(i => !i.CountedQuantity.HasValue) ?? Enumerable.Empty<StocktakeItem>())
+            {
+                <tr><td>@item.Product?.Name</td></tr>
+            }
+        </table>
+        <hr />
+        <h5>کالاهای شمارش شده</h5>
+        <table class="table table-sm">
+            @foreach (var item in ActiveSession?.Items.Where(i => i.CountedQuantity.HasValue) ?? Enumerable.Empty<StocktakeItem>())
+            {
+                <tr><td>@item.Product?.Name</td></tr>
+            }
+        </table>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<StocktakeSession> stocktakeSessions { get; set; } = new();
+    private StocktakeSession? ActiveSession => stocktakeSessions.FirstOrDefault();
+}

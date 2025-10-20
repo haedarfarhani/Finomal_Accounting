@@ -1,0 +1,42 @@
+﻿@using Finomal.UI.Blazor.Components.Layout
+<Dialog @ref="dialog">
+    <Title>افزودن گروه جدید</Title>
+    <Body>
+        <div class="mb-3">
+            <label for="categoryName" class="form-label">نام گروه:</label>
+            <input @bind="newCategoryName" type="text" id="categoryName" class="form-control" placeholder="مثال: کالای دیجیتال" />
+        </div>
+    </Body>
+    <Footer>
+        <button type="button" class="btn btn-secondary" @onclick="HandleCancel">انصراف</button>
+        <button type="button" class="btn btn-primary" @onclick="HandleSave">ذخیره</button>
+    </Footer>
+</Dialog>
+
+@code {
+    [Parameter] public EventCallback<string> OnSave { get; set; }
+
+    private Dialog dialog = new();
+    private string newCategoryName = "";
+
+    public void Open()
+    {
+        dialog.Open();
+    }
+
+    private void HandleCancel()
+    {
+        newCategoryName = "";
+        dialog.Close();
+    }
+
+    private async Task HandleSave()
+    {
+        if (!string.IsNullOrWhiteSpace(newCategoryName))
+        {
+            await OnSave.InvokeAsync(newCategoryName);
+            newCategoryName = ""; // Clear for next time
+            dialog.Close();
+        }
+    }
+}

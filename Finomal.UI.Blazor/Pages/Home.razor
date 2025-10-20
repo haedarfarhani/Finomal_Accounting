@@ -1,0 +1,273 @@
+﻿@page "/"
+@using Finomal.Application.Users
+@using Finomal.Application.Users.GetUsers
+@inject ISender Sender
+@rendermode InteractiveServer
+
+
+
+<div class="container-fluid">
+    @* ==================== 1. نوار اطلاعات بالای صفحه (Header) ==================== *@
+    <div class="d-flex justify-content-between align-items-center p-2 mb-3 bg-light rounded shadow-sm">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-user-circle fa-2x text-primary me-2"></i>
+            <div>
+                <strong>نام کاربر:</strong> @currentUser.Name <br />
+                <span class="badge bg-success">@currentUser.Role</span>
+            </div>
+        </div>
+        <div class="text-center">
+            <strong>تاریخ و ساعت سیستم:</strong><br />
+            <span>@DateTime.Now.ToString("yyyy/MM/dd - HH:mm:ss")</span>
+        </div>
+        <div class="d-flex align-items-center">
+            <div class="text-end me-3">
+                <strong>آخرین ورود:</strong><br />
+                <span>@currentUser.LastLogin.ToString("yyyy/MM/dd - HH:mm")</span>
+            </div>
+            <button class="btn btn-outline-danger"><i class="fas fa-sign-out-alt me-1"></i>خروج</button>
+        </div>
+    </div>
+
+    @* ==================== 2. نوار دسترسی سریع ==================== *@
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        @foreach (var item in quickAccessItems)
+        {
+            <a href="@item.Url" class="btn btn-outline-secondary">
+                <i class="@item.Icon me-1"></i>@item.Title
+            </a>
+        }
+        <a href="/settings" class="btn btn-outline-info"><i class="fas fa-cog"></i> مدیریت لیست</a>
+    </div>
+
+    @* ==================== 3. کارت‌های ارقام کلیدی (KPIs) ==================== *@
+    <div class="row g-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-white bg-primary h-100 shadow">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-dollar-sign me-2"></i>فروش ماه جاری</h5>
+                    <p class="fs-4 fw-bold">@dashboardData.CurrentMonthSales.ToString("N0") تومان</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-white bg-secondary h-100 shadow">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-history me-2"></i>فروش ماه گذشته</h5>
+                    <p class="fs-4 fw-bold">@dashboardData.LastMonthSales.ToString("N0") تومان</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-white bg-warning h-100 shadow">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-hand-holding-usd me-2"></i>میزان بستانکاری</h5>
+                    <p class="fs-4 fw-bold">@dashboardData.TotalReceivables.ToString("N0") تومان</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-white bg-danger h-100 shadow">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-file-invoice-dollar me-2"></i>میزان بدهکاری</h5>
+                    <p class="fs-4 fw-bold">@dashboardData.TotalPayables.ToString("N0") تومان</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-4" />
+
+
+    @* ==================== 4. ردیف اول نمودارها: فروش روزانه و رویدادها ==================== *@
+    <div class="row g-4 mb-4">
+        @* --- نمودار فروش روزانه --- *@
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header"><h5><i class="fas fa-chart-bar me-2"></i>فروش روزانه (30 روز گذشته)</h5></div>
+                <div class="card-body">
+                    <canvas id="dailySalesChart" style="height:300px;"></canvas>
+                </div>
+            </div>
+        </div>
+        @* --- بخش رویدادها و یادآوری‌ها --- *@
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header"><h5><i class="fas fa-bell me-2"></i>رویدادها و یادآوری‌ها</h5></div>
+                <div class="card-body" style="max-height: 320px; overflow-y: auto;">
+                    <ul class="list-group list-group-flush">
+                        @foreach (var e in upcomingEvents)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-start">
+                                <div><i class="@e.IconClass me-2"></i> @e.Title</div>
+                                <span class="badge @e.BadgeClass">@e.DueDate.ToShortDateString()</span>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ==================== 5. ردیف دوم نمودارها: ماهانه (جدید) ==================== *@
+    <div class="row g-4">
+        @* --- نمودار فروش ماهیانه --- *@
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header"><h5><i class="fas fa-chart-line me-2"></i>فروش ماهیانه</h5></div>
+                <div class="card-body">
+                    <canvas id="monthlySalesChart" style="height:250px;"></canvas>
+                </div>
+            </div>
+        </div>
+
+        @* --- نمودار هزینه‌های ماهیانه --- *@
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header"><h5><i class="fas fa-chart-area me-2"></i>هزینه‌های ماهیانه</h5></div>
+                <div class="card-body">
+                    <canvas id="monthlyExpenseChart" style="height:250px;"></canvas>
+                </div>
+            </div>
+        </div>
+
+        @* --- نمودار مقایسه درآمد و هزینه --- *@
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header"><h5><i class="fas fa-balance-scale me-2"></i>مقایسه درآمد و هزینه</h5></div>
+                <div class="card-body">
+                    <canvas id="incomeVsExpenseChart" style="height:250px;"></canvas>
+                </div>
+            </div>
+        </div>
+        <h3>لیست کاربران</h3>
+
+        @if (users == null)
+        {
+            <p>در حال بارگذاری...</p>
+        }
+        else if (users.Any())
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>شناسه</th>
+                        <th>نام کاربری</th>
+                        <th>نقش‌ها</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in users)
+                    {
+                        <tr>
+                            <td>@user.Id</td>
+                            <td>@user.UserName</td>
+                            <td>@user.Roles</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>کاربری یافت نشد.</p>
+        }
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">
+                @errorMessage
+            </div>
+        }
+
+    </div>
+</div>
+
+
+@code {
+    private List<UserDto>? users;
+    private string errorMessage = string.Empty;
+    private string _err = "Failed to get users.";
+    private async Task LoadUsers()
+    {
+        
+        var result = await Sender.Send(new GetUsersQuery());
+        if (result.Success && result.Value != null)
+        {
+            users = result.Value;
+        }
+        else
+        {
+            users = new List<UserDto>();
+            errorMessage = result.Error ?? _err;
+        }
+        StateHasChanged();
+    }
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Delay
+        // await Task.Delay(2000);
+        await LoadUsers();
+    }
+
+
+
+
+    // --- Data Models for Demo ---
+    private class User { public string Name { get; set; } = "مدیر سیستم"; public string Role { get; set; } = "Admin"; public DateTime LastLogin { get; set; } = DateTime.Now.AddHours(-2); }
+    private class QuickAccessItem { public string Title { get; set; } = ""; public string Icon { get; set; } = ""; public string Url { get; set; } = ""; }
+    private class DashboardData { public decimal CurrentMonthSales { get; set; } public decimal LastMonthSales { get; set; } public decimal TotalReceivables { get; set; } public decimal TotalPayables { get; set; } }
+    private class UpcomingEvent { public string Title { get; set; } = ""; public DateTime DueDate { get; set; } public string IconClass { get; set; } = ""; public string BadgeClass => (DueDate - DateTime.Today).TotalDays <= 3 ? "bg-danger" : "bg-warning text-dark"; }
+
+    // --- State ---
+    private User currentUser = new();
+    private List<QuickAccessItem> quickAccessItems = new();
+    private DashboardData dashboardData = new();
+    private List<UpcomingEvent> upcomingEvents = new();
+
+    // --- Chart Data ---
+    private List<string> dailySalesLabels = new();
+    private List<decimal> dailySalesData = new();
+
+    protected override void OnInitialized()
+    {
+        // --- Load Mock Data ---
+        quickAccessItems = new List<QuickAccessItem>
+        {
+            new QuickAccessItem { Title = "صدور فاکتور جدید", Icon = "fas fa-plus", Url = "/invoices/new" },
+            new QuickAccessItem { Title = "گزارش فروش", Icon = "fas fa-chart-line", Url = "/reports/sales" },
+            new QuickAccessItem { Title = "مدیریت پرسنل", Icon = "fas fa-users", Url = "/personnel-info" }
+        };
+
+        dashboardData = new DashboardData { CurrentMonthSales = 15_800_000, LastMonthSales = 12_500_000, TotalReceivables = 4_200_000, TotalPayables = 1_850_000 };
+
+        upcomingEvents = new List<UpcomingEvent>
+        {
+            new UpcomingEvent { Title = "سررسید چک بانک ملت", DueDate = DateTime.Today.AddDays(2), IconClass = "fas fa-money-check-alt text-danger" },
+            new UpcomingEvent { Title = "موعد پرداخت بیمه تامین اجتماعی", DueDate = DateTime.Today.AddDays(5), IconClass = "fas fa-shield-alt text-primary" },
+            new UpcomingEvent { Title = "پرداخت حقوق پرسنل", DueDate = DateTime.Today.AddDays(8), IconClass = "fas fa-hand-holding-usd text-success" },
+            new UpcomingEvent { Title = "قسط وام آقای رضایی", DueDate = DateTime.Today.AddDays(10), IconClass = "fas fa-receipt text-secondary" }
+        };
+
+        // Prepare data for the daily sales chart
+        var rand = new Random();
+        for (int i = 29; i >= 0; i--)
+        {
+            var date = DateTime.Today.AddDays(-i);
+            dailySalesLabels.Add(date.ToString("MM/dd"));
+            dailySalesData.Add(rand.Next(500000, 2000000));
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Render the charts after the component has been added to the DOM
+            StateHasChanged(); // Ensure the UI updates if needed
+        }
+    }
+}

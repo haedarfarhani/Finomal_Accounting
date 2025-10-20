@@ -1,0 +1,277 @@
+﻿@page "/WarehouseReceipt"
+@using Finomal.UI.Blazor.Components.Layout
+@using Finomal.UI.Blazor.Components.model
+@using static Finomal.UI.Blazor.Pages.CreateWarehouse
+@inject IJSRuntime JSRuntime
+
+<div class="container-fluid">
+    @* --- فرم اصلی --- *@
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h3><i class="fas fa-receipt me-2"></i>@(isEditMode ? "ویرایش رسید انبار" : "ایجاد رسید انبار جدید")</h3>
+        </div>
+        <div class="card-body">
+            <EditForm Model="@currentReceipt" OnValidSubmit="HandleSaveReceipt">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                @* -- اطلاعات اصلی رسید -- *@
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">شماره رسید</label>
+                        <div class="input-group">
+                            <InputText class="form-control" @bind-Value="currentReceipt.ReceiptNumber" />
+                            <button class="btn btn-outline-secondary" type="button" @onclick="GenerateReceiptNumber" title="ایجاد شماره خودکار"><i class="fas fa-magic"></i></button>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">تاریخ</label>
+                        <InputDate class="form-control" @bind-Value="currentReceipt.IssueDate" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">نوع رسید</label>
+                        <InputSelect class="form-select" @bind-Value="currentReceipt.ReceiptType">
+                            <option value="خرید">خرید</option>
+                            <option value="تولید">تولید</option>
+                            <option value="سایر">سایر</option>
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">انبار</label>
+                        <InputSelect class="form-select" @bind-Value="currentReceipt.WarehouseId">
+                            <option value="0">-- انتخاب انبار --</option>
+                            @foreach (var wh in warehouses)
+                            {
+                                <option value="@wh.Id">@wh.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+
+                @* -- اطلاعات تحویل دهنده و گیرنده -- *@
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <h5>اطلاعات تحویل دهنده</h5>
+                        <InputText class="form-control mb-1" @bind-Value="currentReceipt.SupplierName" placeholder="نام تحویل دهنده" />
+                        <InputText class="form-control mb-1" @bind-Value="currentReceipt.SupplierAddress" placeholder="آدرس" />
+                        <InputText class="form-control" @bind-Value="currentReceipt.SupplierPhone" placeholder="تلفن" />
+                    </div>
+                    <div class="col-md-6">
+                        <h5>اطلاعات تحویل گیرنده</h5>
+                        <InputText class="form-control mb-1" @bind-Value="currentReceipt.ReceiverName" placeholder="نام تحویل گیرنده" />
+                        <InputText class="form-control mb-1" @bind-Value="currentReceipt.ReceiverAddress" placeholder="آدرس" />
+                        <InputText class="form-control" @bind-Value="currentReceipt.ReceiverPhone" placeholder="تلفن" />
+                    </div>
+                </div>
+
+                @* -- جدول اقلام رسید -- *@
+                <h5>اقلام رسید</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>کالا</th>
+                                <th>واحد</th>
+                                <th>مقدار</th>
+                                <th>فی (تومان)</th>
+                                <th>مبلغ کل</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in currentReceipt.Items)
+                            {
+                                <tr>
+                                    <td>@item.Product?.Name</td>
+                                    <td>@item.UnitName</td>
+                                    <td><InputNumber class="form-control" @bind-Value="item.Quantity" /></td>
+                                    <td><InputNumber class="form-control" @bind-Value="item.UnitPrice" /></td>
+                                    <td>@((item.Quantity * item.UnitPrice).ToString("N0"))</td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemoveItem(item)"><i class="fas fa-times"></i></button></td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="5">
+                                    <button type="button" class="btn btn-success" @onclick="() => productDialog.Open()"><i class="fas fa-plus me-1"></i>افزودن کالا از لیست</button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                @* -- هزینه حمل و دکمه ذخیره -- *@
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                        <label class="form-label">مبلغ حمل (تومان)</label>
+                        <InputNumber class="form-control" style="width: 200px;" @bind-Value="currentReceipt.ShippingCost" />
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save me-2"></i>ذخیره رسید</button>
+                        <button type="button" class="btn btn-secondary btn-lg" @onclick="ResetForm"><i class="fas fa-sync-alt me-2"></i>فرم جدید</button>
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+
+    @* --- جدول رسیدهای ثبت شده --- *@
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h3><i class="fas fa-list-ul me-2"></i>لیست رسیدهای ثبت شده</h3>
+        </div>
+        <div class="card-body">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>شماره</th>
+                        <th>تاریخ</th>
+                        <th>نوع</th>
+                        <th>تامین کننده</th>
+                        <th>مبلغ کل</th>
+                        <th class="text-center">وضعیت</th>
+                        <th class="text-center">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var receipt in receiptList)
+                    {
+                        <tr>
+                            <td>@receipt.ReceiptNumber</td>
+                            <td>@receipt.IssueDate.ToShortDateString()</td>
+                            <td>@receipt.ReceiptType</td>
+                            <td>@receipt.SupplierName</td>
+                            <td>@receipt.TotalAmount.ToString("N0") تومان</td>
+                            <td class="text-center">
+                                <span class="badge @(receipt.IsFinalized ? "bg-success" : "bg-warning text-dark")">
+                                    @(receipt.IsFinalized ? "نهایی شده" : "پیش‌نویس")
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                @if (!receipt.IsFinalized)
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => StartEdit(receipt)" title="ویرایش"><i class="fas fa-pencil-alt"></i></button>
+                                    <button class="btn btn-sm btn-outline-success" @onclick="() => FinalizeReceipt(receipt)" title="نهایی کردن"><i class="fas fa-check-circle"></i></button>
+                                }
+                                <button class="btn btn-sm btn-outline-info" @onclick="() => PrintReceipt(receipt.Id)" title="چاپ"><i class="fas fa-print"></i></button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<ProductSelectionDialog @ref="productDialog" AvailableProducts="availableProducts" OnProductSelected="HandleProductSelected" />
+
+@code {
+    // --- State ---
+    private WarehouseReceipt currentReceipt = new();
+    private List<WarehouseReceipt> receiptList = new();
+    private bool isEditMode = false;
+
+    // --- Data Sources (Should come from services/API in a real app) ---
+    private List<Product> availableProducts = new();
+    private List<Warehouse> warehouses = new();
+
+    // --- Component Refs ---
+    private ProductSelectionDialog productDialog = new();
+
+    protected override void OnInitialized()
+    {
+        // --- Mock Data ---
+        warehouses = new List<Warehouse> { new Warehouse { Id = 1, Name = "انبار مرکزی" } };
+        availableProducts = new List<Product> {
+            new Product { Id = 1, Name = "لپ تاپ Dell", Barcode1 = "P1", Unit = new UnitOfMeasure { Name = "عدد" } },
+            new Product { Id = 2, Name = "کیبورد مکانیکی", Barcode1 = "P2", Unit = new UnitOfMeasure { Name = "عدد" } }
+        };
+
+        receiptList.Add(new WarehouseReceipt
+        {
+            Id = 1,
+            ReceiptNumber = "WR-2025-001",
+            SupplierName = "شرکت آلفا",
+            IsFinalized = true,
+            Items = new List<WarehouseReceiptItem> { new WarehouseReceiptItem { ProductId = 1, Quantity = 5, UnitPrice = 500 } }
+        });
+    }
+
+    // --- Form Logic ---
+    private void HandleSaveReceipt()
+    {
+        if (isEditMode)
+        {
+            var index = receiptList.FindIndex(r => r.Id == currentReceipt.Id);
+            if (index != -1) receiptList[index] = currentReceipt;
+        }
+        else
+        {
+            currentReceipt.Id = receiptList.Any() ? receiptList.Max(r => r.Id) + 1 : 1;
+            if (string.IsNullOrEmpty(currentReceipt.ReceiptNumber)) GenerateReceiptNumber();
+            receiptList.Insert(0, currentReceipt);
+        }
+        ResetForm();
+    }
+
+    private void ResetForm()
+    {
+        currentReceipt = new();
+        isEditMode = false;
+    }
+
+    private void GenerateReceiptNumber()
+    {
+        currentReceipt.ReceiptNumber = $"WR-{DateTime.Now.Ticks}";
+    }
+
+    // --- Item Management ---
+    private void HandleProductSelected(Product selectedProduct)
+    {
+        if (!currentReceipt.Items.Any(i => i.ProductId == selectedProduct.Id))
+        {
+            currentReceipt.Items.Add(new WarehouseReceiptItem
+            {
+                ProductId = selectedProduct.Id,
+                Product = selectedProduct,
+                Quantity = 1
+            });
+        }
+    }
+
+    private void RemoveItem(WarehouseReceiptItem item)
+    {
+        currentReceipt.Items.Remove(item);
+    }
+
+    // --- Table Actions ---
+    private void StartEdit(WarehouseReceipt receiptToEdit)
+    {
+        // In a real app, you'd create a deep copy. For this example, a shallow copy is fine.
+        currentReceipt = new WarehouseReceipt
+        {
+            // copy all properties...
+            Id = receiptToEdit.Id,
+            ReceiptNumber = receiptToEdit.ReceiptNumber,
+            //...
+            Items = new List<WarehouseReceiptItem>(receiptToEdit.Items)
+        };
+        isEditMode = true;
+    }
+
+    private async Task FinalizeReceipt(WarehouseReceipt receipt)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"آیا از نهایی کردن رسید شماره {receipt.ReceiptNumber} مطمئن هستید؟ پس از این عمل، رسید قابل ویرایش نخواهد بود.");
+        if (confirmed)
+        {
+            receipt.IsFinalized = true;
+        }
+    }
+
+    private void PrintReceipt(int receiptId)
+    {
+        // Logic for printing, e.g., opening a new page or generating a PDF.
+        JSRuntime.InvokeVoidAsync("alert", $"چاپ رسید با شناسه {receiptId}");
+    }
+}
