@@ -1,9 +1,9 @@
 ﻿@page "/"
 @using Finomal.Application.Users
+@using Finomal.Application.Users.Dtos
 @using Finomal.Application.Users.GetUsers
 @inject ISender Sender
 @rendermode InteractiveServer
-
 
 
 <div class="container-fluid">
@@ -191,17 +191,17 @@
     private async Task LoadUsers()
     {
         
-        var result = await Sender.Send(new GetUsersQuery());
-        if (result.Success && result.Value != null)
-        {
-            users = result.Value;
-        }
-        else
-        {
-            users = new List<UserDto>();
-            errorMessage = result.Error ?? _err;
-        }
-        StateHasChanged();
+        // var result = await Sender.Send(new GetUsersQuery());
+        // if (result.Success && result.Value != null)
+        // {
+        //     users = result.Value;
+        // }
+        // else
+        // {
+        //     users = new List<UserDto>();
+        //     errorMessage = result.Error ?? _err;
+        // }
+        // StateHasChanged();
     }
 
 

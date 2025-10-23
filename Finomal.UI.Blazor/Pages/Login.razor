@@ -1,25 +1,36 @@
 ﻿@page "/login"
+@using Blazored.LocalStorage
+@using Finomal.Application.Users.Dtos
+@using Finomal.Application.Users.GetRoles
+@using Finomal.Application.Users.Login
+@using Finomal.Domain.Abstractions
+@using Finomal.Infastructure.IoC
 @layout LoginLayout
-
-
+@inject ISender Sender 
+@inject ILocalStorageService LocalStorage
 @inject NavigationManager NavigationManager
-@inject IHttpContextAccessor HttpContextAccessor
 
-<div class="card shadow-lg border-0 rounded-lg mt-5 mx-auto" style="max-width: 50rem;">
+<div class="card shadow-lg border-0 rounded-lg mt-5 mx-auto">
     <div class="card-header"><h3 class="text-center font-weight-light my-4">ورود به سیستم</h3></div>
     <div class="card-body">
         <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
             <DataAnnotationsValidator />
+
             <div class="form-floating mb-3">
                 <InputSelect id="role" class="form-select" @bind-Value="loginModel.Role">
                     <option value="">یک نقش انتخاب کنید...</option>
-                    <option value="Admin">ادمین</option>
-                    <option value="Accountant">حسابدار</option>
-                    <option value="Visitor">ویزیتور</option>
+                    @if (roles != null)
+                    {
+                        @foreach (var role in roles)
+                        {
+                            <option value="@role.Name">@role.Name</option>
+                        }
+                    }
                 </InputSelect>
                 <label for="role">نقش</label>
                 <ValidationMessage For="@(() => loginModel.Role)" />
             </div>
+
             <div class="form-floating mb-3">
                 <InputText id="username" class="form-control" @bind-Value="loginModel.Username" placeholder="نام کاربری" />
                 <label for="username">نام کاربری</label>
@@ -31,60 +42,129 @@
                 <label for="password">رمز عبور</label>
                 <ValidationMessage For="@(() => loginModel.Password)" />
             </div>
-            
+
             <div class="d-grid">
-                 <button type="submit" class="btn btn-primary btn-block">ورود</button>
+                <button type="submit" class="btn btn-primary btn-block" disabled="@_isProcessing">
+                    @if (_isProcessing)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>در حال ورود...</span>
+                    }
+                    else
+                    {
+                        <span>ورود</span>
+                    }
+                </button>
             </div>
         </EditForm>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-3" role="alert">
+                @errorMessage
+            </div>
+        }
     </div>
     <div class="card-footer text-center py-3">
         <div class="small"><a href="/register">حساب کاربری ندارید؟ ثبت‌نام کنید</a></div>
     </div>
 </div>
 
-
 @code {
-    private LoginModel loginModel = new LoginModel();
+    // این مدل ورودی فرم است
+    public class LoginInputModel
+    {
+        [Required(ErrorMessage = "نام کاربری الزامی است.")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "رمز عبور الزامی است.")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "انتخاب نقش الزامی است.")] // <--- اعتبارسنجی نقش اضافه شد
+        public string Role { get; set; } = string.Empty; // <--- اضافه شده
+    }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string ReturnUrl { get; set; } = "/";
+    private LoginInputModel loginModel = new LoginInputModel();
+    private string errorMessage = string.Empty;
+    private bool _isProcessing = false; // برای جلوگیری از ارسال چندباره فرم
+    private List<RoleDto> roles;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+    }
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            var query = new GetRolesQuery();
+            var result = await Sender.Send(query);
+
+            if (result.Success)
+            {
+                roles = result.Value; // <--- ذخیره نقش‌ها در لیست
+                // می‌توانید یک نقش پیش‌فرض را انتخاب کنید اگر نیاز دارید.
+                // if (roles.Any() && string.IsNullOrEmpty(registerModel.Role))
+                // {
+                //     registerModel.Role = roles.First().Name;
+                // }
+            }
+            else
+            {
+                errorMessage = $"خطا در بارگذاری نقش‌ها: {result.Error}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطایی در بارگذاری نقش‌ها رخ داد: {ex.Message}";
+            Console.Error.WriteLine($"Error loading roles: {ex.Message}");
+        }
+    }
 
     private async Task HandleLogin()
     {
-        // در دنیای واقعی، اینجا نام کاربری و رمز عبور را با دیتابیس چک کنید.
-        // اگر معتبر بود:
+        errorMessage = string.Empty; // پاک کردن خطاهای قبلی
+        _isProcessing = true; // شروع فرآیند ورود
 
-        var claims = new List<Claim>
+        try
         {
-            new Claim(ClaimTypes.Name, loginModel.Username),
-            new Claim(ClaimTypes.Role, loginModel.Role),
-        };
+            var selectedRole = roles.FirstOrDefault(role => role.Name == loginModel.Role);
+            // ایجاد Command از روی مدل ورودی
+            var command = new LoginCommand
+            {
+                UserName = loginModel.Username,
+                Password = loginModel.Password,
+                RoleId = selectedRole != null ? selectedRole.Id : 0 
+            };
 
-        var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            // ارسال Command به هندلر از طریق ISender
+            // انتظار Result<LoginDto> را داریم
+            var result = await Sender.Send(command);
+            if (result.Success)
+            {
+                var loginResponse = result.Value; // دسترسی به LoginDto برگردانده شده
+                // await AuthenticationStateProvider.SetToken(loginResponse.Token);
+                NavigationManager.NavigateTo(ReturnUrl);
 
-        var authProperties = new AuthenticationProperties
+            }
+            else
+            {
+                // ورود ناموفق
+                errorMessage = result.Error;
+            }
+        }
+        catch (Exception ex)
         {
-            // می‌توانید ویژگی‌های دیگری مثل زمان انقضا را اینجا تنظیم کنید.
-            IsPersistent = true // برای "مرا به خاطر بسپار"
-        };
-
-        // استفاده از SignInAsync برای ایجاد کوکی امن احراز هویت
-        // این کار باید از طریق HttpContext انجام شود.
-        await HttpContextAccessor.HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,new ClaimsPrincipal(claimsIdentity),authProperties);
-
-        // پس از ایجاد کوکی، کاربر را به صفحه اصلی هدایت کنید.
-        NavigationManager.NavigateTo("/", forceLoad: true);
-    }
-    
-
-    public class LoginModel
-    {
-        [Required(ErrorMessage = "وارد کردن نام کاربری الزامی است.")]
-        public string Username { get; set; } = "";
-
-        [Required(ErrorMessage = "وارد کردن رمز عبور الزامی است.")]
-        [DataType(DataType.Password)]
-        public string Password { get; set; } = "";
-
-        [Required(ErrorMessage = "انتخاب نقش الزامی است.")]
-        public string Role { get; set; } = "";
+            errorMessage = $"خطایی رخ داد: {ex.Message}";
+            Console.Error.WriteLine($"Login error: {ex.Message}");
+        }
+        finally
+        {
+            _isProcessing = false; // پایان فرآیند ورود
+        }
     }
 }
-

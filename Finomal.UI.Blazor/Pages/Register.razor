@@ -1,0 +1,226 @@
+﻿@page "/register"
+@using Finomal.Application.Users.Dtos
+@using Finomal.Application.Users.Register
+@using Finomal.Application.Users.GetRoles // برای دسترسی به GetRolesQuery و RoleDto
+@using Finomal.Domain.Abstractions // برای Result
+@layout LoginLayout
+@inject NavigationManager NavigationManager
+@inject ISender Sender 
+
+<div class="card shadow-lg border-0 rounded-lg mt-5 mx-auto">
+    <div class="card-header"><h3 class="text-center font-weight-light my-4">ثبت‌نام کاربر جدید</h3></div>
+    <div class="card-body">
+        <EditForm Model="@registerModel" OnValidSubmit="HandleRegister">
+            <DataAnnotationsValidator />
+
+            <div class="form-floating mb-3">
+                <InputText id="firstName" class="form-control" @bind-Value="registerModel.FirstName" placeholder="نام" />
+                <label for="firstName">نام</label>
+                <ValidationMessage For="@(() => registerModel.FirstName)" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText id="lastName" class="form-control" @bind-Value="registerModel.LastName" placeholder="نام خانوادگی" />
+                <label for="lastName">نام خانوادگی</label>
+                <ValidationMessage For="@(() => registerModel.LastName)" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText id="UserName" class="form-control" @bind-Value="registerModel.UserName" placeholder="نام کاربری" />
+                <label for="UserName">نام کاربری</label>
+                <ValidationMessage For="@(() => registerModel.UserName)" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText id="email" type="email" class="form-control" @bind-Value="registerModel.Email" placeholder="ایمیل" />
+                <label for="email">ایمیل</label>
+                <ValidationMessage For="@(() => registerModel.Email)" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText id="password" type="password" class="form-control" @bind-Value="registerModel.Password" placeholder="رمز عبور" />
+                <label for="password">رمز عبور</label>
+                <ValidationMessage For="@(() => registerModel.Password)" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="registerModel.ConfirmPassword" placeholder="تکرار رمز عبور" />
+                <label for="confirmPassword">تکرار رمز عبور</label>
+                <ValidationMessage For="@(() => registerModel.ConfirmPassword)" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputSelect id="role" class="form-select" @bind-Value="registerModel.Role">
+                    <option value="">یک نقش انتخاب کنید...</option>
+                    @if (roles != null)
+                    {
+                        @foreach (var role in roles)
+                        {
+                            <option value="@role.Name">@role.Name</option>
+                        }
+                    }
+                </InputSelect>
+                <label for="role">نقش</label>
+                <ValidationMessage For="@(() => registerModel.Role)" />
+            </div>
+
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary btn-block" disabled="@_isProcessing">
+                    @if (_isProcessing)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>در حال ثبت‌نام...</span>
+                    }
+                    else
+                    {
+                        <span>ثبت‌نام</span>
+                    }
+                </button>
+            </div>
+        </EditForm>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-3" role="alert">
+                @errorMessage
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success mt-3" role="alert">
+                @successMessage
+            </div>
+        }
+    </div>
+    <div class="card-footer text-center py-3">
+        <div class="small"><a href="/login">حساب کاربری دارید؟ وارد شوید</a></div>
+    </div>
+</div>
+
+@code {
+    // مدل برای فیلدهای ورودی فرم ثبت‌نام
+    public class RegisterInputModel
+    {
+        [Required(ErrorMessage = "نام الزامی است.")]
+        [StringLength(50, ErrorMessage = "نام نباید بیشتر از 50 کاراکتر باشد.")]
+        public string FirstName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "نام خانوادگی الزامی است.")]
+        [StringLength(50, ErrorMessage = "نام خانوادگی نباید بیشتر از 50 کاراکتر باشد.")]
+        public string LastName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "نام کاربری الزامی است.")]
+        [StringLength(50, MinimumLength = 3, ErrorMessage = "نام کاربری باید بین 3 تا 50 کاراکتر باشد.")]
+        public string UserName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "ایمیل الزامی است.")]
+        [EmailAddress(ErrorMessage = "فرمت ایمیل نامعتبر است.")]
+        [StringLength(100, ErrorMessage = "ایمیل نباید بیشتر از 100 کاراکتر باشد.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "رمز عبور الزامی است.")]
+        [StringLength(100, MinimumLength = 6, ErrorMessage = "رمز عبور باید حداقل 6 کاراکتر باشد.")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "تکرار رمز عبور الزامی است.")]
+        [Compare(nameof(Password), ErrorMessage = "رمز عبور و تکرار آن یکسان نیستند.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "انتخاب نقش الزامی است.")]
+        public string Role { get; set; } = string.Empty;
+    }
+
+    private RegisterInputModel registerModel = new RegisterInputModel();
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+    private bool _isProcessing = false;
+    private List<RoleDto> roles; // <--- لیست برای نگهداری نقش‌های بارگذاری شده
+
+    // فراخوانی در زمان initialize شدن کامپوننت
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+    }
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            var query = new GetRolesQuery();
+            var result = await Sender.Send(query); // <--- ارسال کوئری برای دریافت نقش‌ها
+
+            if (result.Success)
+            {
+                roles = result.Value; // <--- ذخیره نقش‌ها در لیست
+                // می‌توانید یک نقش پیش‌فرض را انتخاب کنید اگر نیاز دارید.
+                // if (roles.Any() && string.IsNullOrEmpty(registerModel.Role))
+                // {
+                //     registerModel.Role = roles.First().Name;
+                // }
+            }
+            else
+            {
+                errorMessage = $"خطا در بارگذاری نقش‌ها: {result.Error}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطایی در بارگذاری نقش‌ها رخ داد: {ex.Message}";
+            Console.Error.WriteLine($"Error loading roles: {ex.Message}");
+        }
+    }
+
+    private async Task HandleRegister()
+    {
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+        _isProcessing = true;
+
+        try
+        { 
+            var selectedRole = roles.FirstOrDefault(role => role.Name == registerModel.Role);
+            // اطمینان حاصل کنید که نقش انتخاب شده است
+            if (selectedRole == null)
+            {
+                errorMessage = "لطفا یک نقش را انتخاب کنید.";
+                return;
+            }
+      
+
+            var command = new RegisterCommand // <--- نام Command شما RegisterUserCommand است نه RegisterCommand
+            {
+                UserName = registerModel.UserName,
+                Password = registerModel.Password,
+                Email = registerModel.Email,
+                FirstName = registerModel.FirstName,
+                LastName = registerModel.LastName,
+                RoleId = selectedRole != null ? selectedRole.Id : 0 // <--- استفاده از شناسه نقش انتخاب شده
+            };
+
+            var result = await Sender.Send(command);
+
+            if (result.Success)
+            {
+                successMessage = result.Value.Message + " اکنون می‌توانید وارد شوید.";
+                // می‌توانید پس از ثبت‌نام موفق، کاربر را به صفحه لاگین هدایت کنید
+                // NavigationManager.NavigateTo("/login");
+                // یا فرم را ریست کنید
+                registerModel = new RegisterInputModel(); // <--- ریست کردن مدل
+                StateHasChanged(); // <--- برای رندر مجدد UI پس از ریست مدل و نمایش پیام موفقیت
+            }
+            else
+            {
+                errorMessage = result.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطایی در هنگام ثبت‌نام رخ داد: {ex.Message}";
+            Console.Error.WriteLine($"Register error: {ex.Message}");
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+}

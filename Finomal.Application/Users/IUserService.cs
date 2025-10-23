@@ -1,13 +1,17 @@
-﻿namespace Finomal.Application.Users
+﻿using Finomal.Domain.Users;
+
+namespace Finomal.Application.Users
 {
     public interface IUserService
     {
         Task<string> GetCurrentUserIdAsync();
-        Task<bool> IsCurrentUserInRoleAsync(string roleName);
-        Task<bool> CurrentUserCanCreateArticleAsync();
-        Task<bool> CurrentUserCanEditArticleAsync(int articleId);
-        Task<List<string>> GetUserRolesAsync(string userId);
-        Task AddRoleToUserAsync(string userId, string roleName);
-        Task RemoveRoleFromUserAsync(string userId, string roleName);
+        Task<bool> IsCurrentUserInRoleAsync(int roleId);
+        Task<IReadOnlyList<Role>> GetUserRolesAsync(int userId);
+        Task<IReadOnlyList<Role>> GetAllRolesAsync();
+        Task AddUserToRoleAsync(int userId, int roleId);
+        Task RemoveUserFromRoleAsync(int userId, int roleId);
+        Task<User?> GetUserByUserNameAsync(string UserName);
+        Task<User?> GetUserByIdAsync(int userId);
+        Task<Role?> GetRoleByIdAsync(int roleId);
     }
 }
