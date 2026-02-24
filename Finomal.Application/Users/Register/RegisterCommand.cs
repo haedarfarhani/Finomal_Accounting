@@ -13,6 +13,6 @@ namespace Finomal.Application.Users.Register
         public required string Email { get; set; }
         public required string FirstName { get; set; }
         public required string LastName { get; set; }
-        public required int RoleId { get; set; }
+        public required Guid RoleId { get; set; }
     }
 }

@@ -1,39 +1,34 @@
 ﻿@inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Authorization
-@using Finomal.Infastructure.IoC 
 @inject NavigationManager NavigationManager
 @inject IHttpContextAccessor HttpContextAccessor 
 @inject ILogger<MainLayout> Logger
+<AuthorizeView>
+	<Authorizing>
+		<div class="d-flex flex-row justify-content-center">
+			Authorizing...
+		</div>
+	</Authorizing>
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+	<NotAuthorized>
+			<RedirectToLogin />
+	</NotAuthorized>
 
-    <main>
-        <div class="top-row px-4">
-            <AuthorizeView>
-                <span class="p-1 mr-4" style="color:coral;">Welcome, @(HttpContextAccessor.HttpContext?.User?.ToString() ?? "Guest")</span>
-            </AuthorizeView>
-            <a href="/" class="p-1">Articles</a>
-            <AuthorizeView Roles="Admin">
-                <a href="/users">Registered Users</a>
-            </AuthorizeView>
-            <AuthorizeView>
-                <NotAuthorized>
-                    <a href="/register" class="p-1">Register</a>
-                    <a href="/login" class="p-1">Login</a>
-                </NotAuthorized>
-                <Authorized>
-                    <a href="/my-articles" class="p-1">My Articles</a>
-                    <a href="/logout" class="p-1">Logout</a>
-                </Authorized>
-            </AuthorizeView>
-        </div>
-    </main>
-</div>
+	<Authorized>
+		<div class="page">
+			<div class="sidebar">
+				<NavMenu />
+			</div>
 
+			<main>
+				<div class="top-row px-4">
+					@* <Logout /> *@
+				</div>
 
-@code {
-    // این بخش برای MainLayout می تواند خالی باشد، مگر اینکه نیاز به منطق خاصی در Layout داشته باشید.
-}
+				<article class="content px-4">
+					@Body
+				</article>
+			</main>
+		</div>
+	</Authorized>
+</AuthorizeView>

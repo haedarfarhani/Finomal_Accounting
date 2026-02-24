@@ -1,7 +1,8 @@
 ﻿using Finomal.Application;
 using Finomal.Infrastructure.IoC;
+using Finomal.UI.Blazor;
 using Finomal.UI.Blazor.Components;
-using Finomal.UI.Blazor.Pages;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,7 +22,28 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 builder.Services.AddHttpContextAccessor();
 
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.Cookie.Name = "AuthToken"; // نام کوکی
+        options.Cookie.HttpOnly = true; // امنیت: فقط سرور دسترسی داره
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // فقط HTTPS
+        options.Cookie.SameSite = SameSiteMode.Strict; // جلوگیری از CSRF
+        options.LoginPath = "/login"; // مسیر لاگین
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(60); // انقضای کوکی (مثل JWT)
+    });
+
+// اضافه کردن JWT Validator (برای اعتبارسنجی توکن در Provider)
+builder.Services.AddSingleton<IConfiguration>(builder.Configuration); // اگر کلید JWT در appsettings.json هست
+
+// اضافه کردن Provider سفارشی برای Blazor
+builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
+builder.Services.AddHttpClient();
+
+
 var app = builder.Build();
+
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -32,13 +54,19 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+var cookiePolicyOptions = new CookiePolicyOptions
+{
+    MinimumSameSitePolicy = SameSiteMode.Strict,
+};
 
+app.UseCookiePolicy(cookiePolicyOptions);
 app.UseRouting();
+
+app.UseAuthorization();
+app.UseAuthentication();
 
 app.UseStaticFiles();
 app.UseAntiforgery();
-
-app.UseAuthorization();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

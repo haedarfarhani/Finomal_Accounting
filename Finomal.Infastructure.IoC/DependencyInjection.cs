@@ -27,13 +27,16 @@ namespace Finomal.Infrastructure.IoC
         {
             services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
-            services.AddBlazoredLocalStorage();
 
-            services.AddSingleton<IOptions<JwtSettings>>(provider =>
-                Options.Create(configuration.GetSection("JwtSettings").Get<JwtSettings>()));
+
+            services.AddSingleton<IOptions<JwtSettings>>(provider => Options.Create(configuration.GetSection("JwtSettings").Get<JwtSettings>()));
 
             // Add Authentication
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                })
                 .AddJwtBearer(options =>
                 {
                     var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>();
@@ -41,9 +44,10 @@ namespace Finomal.Infrastructure.IoC
                     {
                         throw new InvalidOperationException("JWT Key cannot be null or empty.");
                     }
-
+                    options.SaveToken = true;
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
+                        ClockSkew = TimeSpan.FromMinutes(5),
                         ValidateIssuer = true,
                         ValidateAudience = true,
                         ValidateLifetime = true,
@@ -53,14 +57,11 @@ namespace Finomal.Infrastructure.IoC
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key))
                     };
                 });
+            services.AddSignalR();
 
-
-
-            AddAuthentication(services);
-
+            services.AddScoped<IAuthenticationService, AuthenticationService>();
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IAccountingRepository, AccountingRepository>();
-
             services.AddScoped<IAccountingService, AccountingService>();
             services.AddScoped<IUserService, UserService>();
 
@@ -70,9 +71,9 @@ namespace Finomal.Infrastructure.IoC
         private static void AddAuthentication(IServiceCollection services)
         {
             services.AddSingleton<IAuthorizationMiddlewareResultHandler, CustomAuthorizationMiddlewareResultHandler>();
-            services.AddScoped<IAuthenticationService, AuthenticationService>();
+
             services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
-            services.AddCascadingAuthenticationState();
+
             services.AddAuthorization();
             services.AddAuthentication(options =>
             {
@@ -82,12 +83,17 @@ namespace Finomal.Infrastructure.IoC
             services.AddIdentityCore<User>(options =>
             {
                 options.SignIn.RequireConfirmedAccount = false;
-                options.User.RequireUniqueEmail = true;
+                options.Password.RequireDigit = false;
+                options.Password.RequiredLength = 4;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequireUppercase = false;
+                options.Password.RequireLowercase = false;
             })
                 .AddRoles<Role>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddSignInManager()
                 .AddDefaultTokenProviders();
         }
+
     }
 }

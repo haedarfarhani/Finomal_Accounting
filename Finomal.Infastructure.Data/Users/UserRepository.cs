@@ -10,212 +10,138 @@ namespace Finomal.Infrastructure.Data.Users
 
         public UserRepository(ApplicationDbContext context)
         {
-            _context = context;
+            _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
-        // --- پیاده‌سازی متدهای بازیابی (Retrieval) ---
+        // ────────────────────────────────────────────────
+        //                 User - خواندن (Queries)
+        // ────────────────────────────────────────────────
 
-        public async Task<User?> GetUserByIdAsync(int userId)
-        {
-            return await _context.Users.Include(u => u.UserRoles)
-                                     .ThenInclude(ur => ur.Role) // بارگذاری Role هم اگر نیاز دارید
-                                 .FirstOrDefaultAsync(u => u.Id == userId);
-        }
-
-        public async Task<List<User>> GetUsersByIdsAsync(IEnumerable<int> userIds)
-        {
-
-
-            if (!userIds.Any()) return new List<User>();
-
-            return await _context.Users
-                                 .Include(u => u.UserRoles)
-                                     .ThenInclude(ur => ur.Role)
-                                 .Where(u => userIds.Contains(u.Id))
-                                 .ToListAsync();
-        }
-
-        public async Task<User?> GetUserByUserNameAsync(string UserName)
+        public async Task<User?> GetByIdAsync(Guid userId)
         {
             return await _context.Users
-                                 .Include(u => u.UserRoles)
-                                     .ThenInclude(ur => ur.Role)
-                                 .FirstOrDefaultAsync(u => u.UserName.ToLower() == UserName.ToLower());
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
         }
 
-        public async Task<List<User>> GetAllUsersAsync()
+        public async Task<User?> GetByUserNameAsync(string userName)
+        {
+            if (string.IsNullOrWhiteSpace(userName))
+                return null;
+
+            return await _context.Users
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.NormalizedUserName == userName.ToUpperInvariant() && !u.IsDeleted);
+        }
+
+        public async Task<User?> GetByUserNameWithRolesAsync(string userName)
+        {
+            return await GetByUserNameAsync(userName); // همین متد قبلی کافیه
+        }
+
+        public async Task<User?> GetByEmailAsync(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return null;
+
+            return await _context.Users
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.NormalizedEmail == email.ToUpperInvariant() && !u.IsDeleted);
+        }
+
+        public async Task<bool> ExistsByUserNameAsync(string userName)
+        {
+            if (string.IsNullOrWhiteSpace(userName))
+                return false;
+
+            return await _context.Users
+                .AnyAsync(u => u.NormalizedUserName == userName.ToUpperInvariant() && !u.IsDeleted);
+        }
+
+        public async Task<bool> ExistsByEmailAsync(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return false;
+
+            return await _context.Users
+                .AnyAsync(u => u.NormalizedEmail == email.ToUpperInvariant() && !u.IsDeleted);
+        }
+
+        public async Task<IReadOnlyList<User>> GetAllAsync()
         {
             return await _context.Users
-                                 .Include(u => u.UserRoles)
-                                     .ThenInclude(ur => ur.Role)
-                                 .Where(u => !u.IsDeleted) // فقط کاربران حذف نشده را برگردان
-                                 .ToListAsync();
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .Where(u => !u.IsDeleted)
+                .ToListAsync();
         }
 
-        // --- پیاده‌سازی متدهای مدیریت (Management) ---
-
-        public async Task AddUserAsync(User user)
+        public async Task<IReadOnlyList<User>> GetByRoleIdAsync(Guid roleId)
         {
-            _context.Users.Add(user);
+            return await _context.Users
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .Where(u => u.UserRoles.Any(ur => ur.RoleId == roleId) && !u.IsDeleted)
+                .ToListAsync();
+        }
+
+        // ────────────────────────────────────────────────
+        //                 User - نوشتن (Commands)
+        // ────────────────────────────────────────────────
+
+        public async Task AddAsync(User user)
+        {
+            if (user == null)
+                throw new ArgumentNullException(nameof(user));
+
+            await _context.Users.AddAsync(user);
             await _context.SaveChangesAsync();
         }
 
-        public async Task UpdateUserAsync(User user)
+        public async Task UpdateAsync(User user)
         {
-            // Attach the user if it's not already tracked by the context
+            if (user == null)
+                throw new ArgumentNullException(nameof(user));
+
             _context.Entry(user).State = EntityState.Modified;
             await _context.SaveChangesAsync();
         }
 
-        public async Task DeleteUserAsync(int userId)
+        public async Task SoftDeleteAsync(Guid userId)
         {
-            
             var user = await _context.Users.FindAsync(userId);
-            if (user != null)
-            {
-                user.IsDeleted = true; // حذف منطقی
-                await _context.SaveChangesAsync();
-            }
-        }
+            if (user == null || user.IsDeleted)
+                return;
 
-        public async Task ActivateUserAsync(int userId)
-        {
-            
-            var user = await _context.Users.FindAsync(userId);
-            if (user != null)
-            {
-                user.IsActive = true;
-                user.IsLockedOut = false; // وقتی فعال می‌شود، قفل نیز برداشته شود
-                user.LockoutEndDate = null;
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        public async Task DeactivateUserAsync(int userId)
-        {
-            
-            var user = await _context.Users.FindAsync(userId);
-            if (user != null)
-            {
-                user.IsActive = false;
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        public async Task LockUserAsync(int userId, DateTime? lockoutEndDate = null)
-        {
-            
-            var user = await _context.Users.FindAsync(userId);
-            if (user != null)
-            {
-                user.IsLockedOut = true;
-                user.LockoutEndDate = lockoutEndDate ?? DateTime.UtcNow.AddMinutes(30); // قفل پیش‌فرض 30 دقیقه
-                user.LoginAttempts = 0; // تلاش‌های ناموفق ریست شود
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        public async Task UnlockUserAsync(int userId)
-        {
-            
-            var user = await _context.Users.FindAsync(userId);
-            if (user != null)
-            {
-                user.IsLockedOut = false;
-                user.LockoutEndDate = null;
-                user.LoginAttempts = 0; // تلاش‌های ناموفق ریست شود
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        // --- پیاده‌سازی متدهای مدیریت نقش‌ها (Role Management) ---
-
-        public async Task AddUserToRoleAsync(int userId, int roleId)
-        {
-            
-            var user = await _context.Users
-                                 .Include(u => u.UserRoles)
-                                 .FirstOrDefaultAsync(u => u.Id == userId);
-
-            if (user != null && !user.UserRoles.Any(ur => ur.RoleID == roleId))
-            {
-                user.UserRoles.Add(new UserRole { UserID = userId, RoleID = roleId });
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        public async Task RemoveUserFromRoleAsync(int userId, int roleId)
-        {
-            
-            var userRole = await _context.userRoles // فرض می‌کنیم UserRoles یک DbSet در DbContext است
-                                        .FirstOrDefaultAsync(ur => ur.UserID == userId && ur.RoleID == roleId);
-
-            if (userRole != null)
-            {
-                _context.userRoles.Remove(userRole);
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        public async Task<List<Role>> GetUserRolesAsync(int userId)
-        {
-            
-            return await _context.userRoles // فرض می‌کنیم UserRoles یک DbSet در DbContext است
-                                 .Where(ur => ur.UserID == userId)
-                                 .Select(ur => ur.Role) // فرض می‌کنیم UserRole دارای یک Navigation Property به Role باشد
-                                 .ToListAsync();
-        }
-
-        // --- پیاده‌سازی متدهای تاریخچه (History/Log) ---
-
-        public async Task<List<LoginHistory>> GetUserLoginHistoryAsync(int userId, int count = 20)
-        {
-
-            return await _context.loginHistories // فرض می‌کنیم LoginHistories یک DbSet در DbContext است
-                                 .Where(lh => lh.UserID == userId)
-                                 .OrderByDescending(lh => lh.EventTime) // جدیدترین ورودها اول باشند
-                                 .Take(count) // محدود کردن تعداد نتایج
-                                 .ToListAsync();
-        }
-
-        public async Task AddLoginHistoryAsync(LoginHistory loginHistory)
-        {
-            _context.loginHistories.Add(loginHistory);
+            user.IsDeleted = true;
+            user.IsActive = false;
             await _context.SaveChangesAsync();
         }
 
-        public async Task ClearUserLoginHistoryAsync(int userId)
+        public async Task RestoreAsync(Guid userId)
         {
-           
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null || !user.IsDeleted)
+                return;
 
-            var userLoginHistories = await _context.loginHistories
-                                                   .Where(lh => lh.UserID == userId)
-                                                   .ToListAsync();
-            if (userLoginHistories.Any())
-            {
-                _context.loginHistories.RemoveRange(userLoginHistories);
-                await _context.SaveChangesAsync();
-            }
+            user.IsDeleted = false;
+            user.IsActive = true;
+            await _context.SaveChangesAsync();
         }
 
-        public async Task DeleteLoginHistoryEntryAsync(int loginHistoryId)
-        {
-            var loginHistoryEntry = await _context.loginHistories.FindAsync(loginHistoryId);
-            if (loginHistoryEntry != null)
-            {
-                _context.loginHistories.Remove(loginHistoryEntry);
-                await _context.SaveChangesAsync();
-            }
-        }
+        // ────────────────────────────────────────────────
+        //                    Roles
+        // ────────────────────────────────────────────────
 
-        public async Task<User> GetUserByUserNameWithRolesAsync(string UserName)
+        public async Task<IReadOnlyList<Role>> GetRolesByUserIdAsync(Guid userId)
         {
-            var userWithRole = await _context.Users
-                       .Include(u => u.UserRoles)
-                           .ThenInclude(ur => ur.Role)
-                       .FirstOrDefaultAsync(u => u.UserName == UserName);
-            return userWithRole;
-
+            return await _context.UserRoles
+                .Where(ur => ur.UserId == userId)
+                .Select(ur => ur.Role)
+                .ToListAsync();
         }
 
         public async Task<IReadOnlyList<Role>> GetAllRolesAsync()
@@ -223,9 +149,90 @@ namespace Finomal.Infrastructure.Data.Users
             return await _context.Roles.ToListAsync();
         }
 
-        public async Task<Role> GetRoleByIdAsync(int roleId)
+        public async Task<Role?> GetRoleByIdAsync(Guid roleId)
         {
-            return await _context.Roles.FirstOrDefaultAsync(r => r.Id == roleId);
+            return await _context.Roles.FindAsync(roleId);
+        }
+
+        public async Task<Role?> GetRoleByNameAsync(string roleName)
+        {
+            if (string.IsNullOrWhiteSpace(roleName))
+                return null;
+
+            return await _context.Roles
+                .FirstOrDefaultAsync(r => r.NormalizedName == roleName.ToUpperInvariant());
+        }
+
+        public async Task AddUserToRoleAsync(Guid userId, Guid roleId)
+        {
+            var exists = await _context.UserRoles
+                .AnyAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
+
+            if (exists)
+                return;
+
+            var userRole = new UserRole
+            {
+                UserId = userId,
+                RoleId = roleId,
+                AssignedDate = DateTime.UtcNow
+            };
+
+            await _context.UserRoles.AddAsync(userRole);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task RemoveUserFromRoleAsync(Guid userId, Guid roleId)
+        {
+            var userRole = await _context.UserRoles
+                .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
+
+            if (userRole != null)
+            {
+                _context.UserRoles.Remove(userRole);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<bool> IsUserInRoleAsync(Guid userId, Guid roleId)
+        {
+            return await _context.UserRoles
+                .AnyAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
+        }
+
+        // ────────────────────────────────────────────────
+        //                 Login History
+        // ────────────────────────────────────────────────
+
+        public async Task AddLoginHistoryAsync(LoginHistory loginHistory)
+        {
+            if (loginHistory == null)
+                throw new ArgumentNullException(nameof(loginHistory));
+
+            await _context.LoginHistories.AddAsync(loginHistory);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<IReadOnlyList<LoginHistory>> GetLoginHistoryByUserIdAsync(
+            Guid userId,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int? take = 50)
+        {
+            var query = _context.LoginHistories
+                .Where(lh => lh.UserId == userId)
+                .OrderByDescending(lh => lh.EventTime);
+
+            if (fromDate.HasValue)
+                query = (IOrderedQueryable<LoginHistory>)query.Where(lh => lh.EventTime >= fromDate.Value);
+
+            if (toDate.HasValue)
+                query = (IOrderedQueryable<LoginHistory>)query.Where(lh => lh.EventTime <= toDate.Value);
+
+            if (take.HasValue && take.Value > 0)
+                query = (IOrderedQueryable<LoginHistory>)query.Take(take.Value);
+
+            return await query.ToListAsync();
         }
     }
 }

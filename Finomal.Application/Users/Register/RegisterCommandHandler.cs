@@ -22,13 +22,13 @@ namespace Finomal.Application.Users.Register
             if (string.IsNullOrWhiteSpace(request.UserName) ||
                 string.IsNullOrWhiteSpace(request.Password) ||
                 string.IsNullOrWhiteSpace(request.Email) ||
-                request.RoleId == 0) 
+                request.RoleId == null) 
             {
                 return Result.Fail<RegisterResponseDto>("همه فیلدهای ضروری باید پر شوند.");
             }
 
             // 2. بررسی وجود نام کاربری/ایمیل تکراری
-            var existingUser = await _userRepository.GetUserByUserNameAsync(request.UserName);
+            var existingUser = await _userRepository.GetByUserNameAsync(request.UserName);
             if (existingUser != null)
             {
                 return Result.Fail<RegisterResponseDto>("نام کاربری قبلاً وجود دارد.");
@@ -72,7 +72,7 @@ namespace Finomal.Application.Users.Register
             newUser.UserRoles.Add(new UserRole { User = newUser, Role = role });
 
             // 7. ذخیره کاربر در دیتابیس
-            await _userRepository.AddUserAsync(newUser);
+            await _userRepository.AddAsync(newUser);
 
             // 8. برگرداندن پاسخ موفقیت‌آمیز
             return Result.OK(new RegisterResponseDto

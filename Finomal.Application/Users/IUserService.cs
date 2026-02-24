@@ -4,14 +4,22 @@ namespace Finomal.Application.Users
 {
     public interface IUserService
     {
-        Task<string> GetCurrentUserIdAsync();
-        Task<bool> IsCurrentUserInRoleAsync(int roleId);
-        Task<IReadOnlyList<Role>> GetUserRolesAsync(int userId);
+        Guid? GetCurrentUserId();
+
+        Task<bool> IsCurrentUserInRoleAsync(Guid roleId);
+
+        Task<IReadOnlyList<Role>> GetCurrentUserRolesAsync();
+
         Task<IReadOnlyList<Role>> GetAllRolesAsync();
-        Task AddUserToRoleAsync(int userId, int roleId);
-        Task RemoveUserFromRoleAsync(int userId, int roleId);
-        Task<User?> GetUserByUserNameAsync(string UserName);
-        Task<User?> GetUserByIdAsync(int userId);
-        Task<Role?> GetRoleByIdAsync(int roleId);
+
+        Task<User?> GetUserByIdAsync(Guid userId);
+
+        Task<User?> GetUserByUserNameAsync(string username);
+
+        Task<Role?> GetRoleByIdAsync(Guid roleId);
+
+        Task AddUserToRoleAsync(Guid userId, Guid roleId);
+
+        Task RemoveUserFromRoleAsync(Guid userId, Guid roleId);
     }
 }

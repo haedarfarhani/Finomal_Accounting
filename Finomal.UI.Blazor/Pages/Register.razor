@@ -194,7 +194,7 @@
                 Email = registerModel.Email,
                 FirstName = registerModel.FirstName,
                 LastName = registerModel.LastName,
-                RoleId = selectedRole != null ? selectedRole.Id : 0 // <--- استفاده از شناسه نقش انتخاب شده
+                RoleId = selectedRole.Id  // <--- استفاده از شناسه نقش انتخاب شده
             };
 
             var result = await Sender.Send(command);

@@ -4,7 +4,6 @@
 @using Finomal.Application.Users.GetRoles
 @using Finomal.Application.Users.Login
 @using Finomal.Domain.Abstractions
-@using Finomal.Infastructure.IoC
 @layout LoginLayout
 @inject ISender Sender 
 @inject ILocalStorageService LocalStorage
@@ -138,7 +137,7 @@
             {
                 UserName = loginModel.Username,
                 Password = loginModel.Password,
-                RoleId = selectedRole != null ? selectedRole.Id : 0 
+                RoleId = selectedRole.Id
             };
 
             // ارسال Command به هندلر از طریق ISender

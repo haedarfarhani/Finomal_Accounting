@@ -1,27 +1,29 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Data;
+using Finomal.Domain.Users;
 
 namespace Finomal.Domain.Users
 {
     public class UserRole
     {
         [Key]
-        public int UserRoleID { get; set; }
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }                     
 
-        [Required]
-        public int UserID { get; set; }
+        public Guid UserId { get; set; }
+        public Guid RoleId { get; set; }
 
-        [Required]
-        public int RoleID { get; set; }
+        public DateTime AssignedDate { get; set; } = DateTime.UtcNow;  
 
-        public DateTime AssignedDate { get; set; } = DateTime.Now;
+        // Navigation properties
+        [ForeignKey(nameof(UserId))]
+        public virtual User User { get; set; } = null!;
 
-        // Foreign Keys
-        [ForeignKey("UserID")]
-        public virtual User User { get; set; }
+        [ForeignKey(nameof(RoleId))]
+        public virtual Role Role { get; set; } = null!;
 
-        [ForeignKey("RoleID")]
-        public virtual Role Role { get; set; }
+        // اگر نیاز به پراپرتی‌های اضافی داری (مثلاً AssignedByUserId, IsActive و ...)
+        // public Guid? AssignedById { get; set; }
+        // public bool IsActive { get; set; } = true;
     }
 }

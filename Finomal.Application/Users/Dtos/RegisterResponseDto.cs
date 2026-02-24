@@ -10,7 +10,7 @@ namespace Finomal.Application.Users.Dtos
     {
         public bool IsSuccess { get; set; }
         public string Message { get; set; }
-        public int? UserId { get; set; } 
+        public Guid? UserId { get; set; } 
         public string UserName { get; set; } 
     }
 }

@@ -2,33 +2,70 @@
 {
     public interface IUserRepository
     {
-        // --- متدهای بازیابی (Retrieval) ---
-        Task<User?> GetUserByIdAsync(int userId); // بازیابی کاربر بر اساس ID (string)
-        Task<List<User>> GetUsersByIdsAsync(IEnumerable<int> userIds); // بازیابی لیستی از کاربران بر اساس IDها (string)
-        Task<User?> GetUserByUserNameAsync(string UserName); // بازیابی کاربر بر اساس نام کاربری
+        // ────────────────────────────────────────────────
+        //                 User - خواندن (Queries)
+        // ────────────────────────────────────────────────
 
-        Task<List<User>> GetAllUsersAsync(); // بازیابی تمامی کاربران
+        Task<User?> GetByIdAsync(Guid userId);
 
-        // --- متدهای مدیریت (Management) ---
-        Task AddUserAsync(User user); // اضافه کردن کاربر جدید
-        Task UpdateUserAsync(User user); // بروزرسانی کاربر موجود
-        Task DeleteUserAsync(int userId); // حذف منطقی کاربر بر اساس ID (string)
+        Task<User?> GetByUserNameAsync(string userName);
 
-        Task ActivateUserAsync(int userId); // فعال کردن کاربر
-        Task DeactivateUserAsync(int userId); // غیرفعال کردن کاربر
-        Task LockUserAsync(int userId, DateTime? lockoutEndDate = null); // قفل کردن کاربر
-        Task UnlockUserAsync(int userId); // باز کردن قفل کاربر
+        Task<User?> GetByUserNameWithRolesAsync(string userName);
 
-        // --- متدهای مدیریت نقش‌ها (Role Management) ---
-        Task AddUserToRoleAsync(int userId, int roleId); // اضافه کردن کاربر به یک نقش
-        Task RemoveUserFromRoleAsync(int userId, int roleId); // حذف کاربر از یک نقش
-        Task<List<Role>> GetUserRolesAsync(int userId); // گرفتن لیست نقش‌های یک کاربر
-        Task<IReadOnlyList<Role>> GetAllRolesAsync(); // گرفتن لیست نقش‌های یک کاربر
-        Task<User> GetUserByUserNameWithRolesAsync(string UserName);
-        Task<Role> GetRoleByIdAsync(int userId);
-        // --- متدهای تاریخچه (History/Log) ---
-        Task AddLoginHistoryAsync(LoginHistory loginHistory); // اضافه کردن یک رکورد تاریخچه ورود جدید
-        Task ClearUserLoginHistoryAsync(int userId); // پاک کردن تمام تاریخچه ورود یک کاربر
-        Task DeleteLoginHistoryEntryAsync(int loginHistoryId); // پاک کردن یک رکورد خاص از تاریخچه ورود
+        Task<User?> GetByEmailAsync(string email);
+
+        Task<bool> ExistsByUserNameAsync(string userName);
+
+        Task<bool> ExistsByEmailAsync(string email);
+
+        Task<IReadOnlyList<User>> GetAllAsync();
+
+        Task<IReadOnlyList<User>> GetByRoleIdAsync(Guid roleId);
+
+        // ────────────────────────────────────────────────
+        //                 User - نوشتن (Commands)
+        // ────────────────────────────────────────────────
+
+        Task AddAsync(User user);
+
+        Task UpdateAsync(User user);
+
+        Task SoftDeleteAsync(Guid userId);
+
+        Task RestoreAsync(Guid userId);               // بازگردانی کاربر حذف‌شده (اختیاری)
+
+        // ────────────────────────────────────────────────
+        //                    Roles
+        // ────────────────────────────────────────────────
+
+        Task<IReadOnlyList<Role>> GetRolesByUserIdAsync(Guid userId);
+
+        Task<IReadOnlyList<Role>> GetAllRolesAsync();
+
+        Task<Role?> GetRoleByIdAsync(Guid roleId);
+
+        Task<Role?> GetRoleByNameAsync(string roleName);
+
+        Task AddUserToRoleAsync(Guid userId, Guid roleId);
+
+        Task RemoveUserFromRoleAsync(Guid userId, Guid roleId);
+
+        Task<bool> IsUserInRoleAsync(Guid userId, Guid roleId);
+
+        // ────────────────────────────────────────────────
+        //                 Login History
+        // ────────────────────────────────────────────────
+
+        Task AddLoginHistoryAsync(LoginHistory loginHistory);
+
+        Task<IReadOnlyList<LoginHistory>> GetLoginHistoryByUserIdAsync(
+            Guid userId,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int? take = 50);
+
+        // اگر نیاز به پاک کردن کل تاریخچه یا یک رکورد خاص دارید، می‌توانید اضافه کنید:
+        // Task ClearLoginHistoryAsync(Guid userId);
+        // Task DeleteLoginHistoryEntryAsync(int loginHistoryId);
     }
 }

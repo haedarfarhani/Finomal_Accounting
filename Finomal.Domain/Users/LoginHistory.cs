@@ -1,42 +1,49 @@
-﻿    using System;
-    using System.ComponentModel.DataAnnotations;
-    using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Finomal.Domain.Users 
+namespace Finomal.Domain.Users
 {
-    public enum LoginEventType // Enum برای نوع رویداد
+    /// <summary>
+    /// انواع رویدادهای لاگین/خروج برای تاریخچه ورود کاربران
+    /// </summary>
+    public enum LoginEventType
     {
         LoginSuccess,
         LoginFailure,
-        Logout
+        Logout,
+        // AccountLocked,
+        // TwoFactorRequired,
+        // PasswordChanged
     }
+
+    /// <summary>
+    /// تاریخچه رویدادهای ورود، خروج و تلاش‌های ناموفق کاربر
+    /// </summary>
     public class LoginHistory
     {
         [Key]
-        public int LoginHistoryID { get; set; } // کلید اصلی جدول
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }
 
-        public int UserID { get; set; } // کلید خارجی برای ارتباط با جدول User
+        public Guid UserId { get; set; }
 
-        [StringLength(50)]
-        public string IpAddress { get; set; } // آدرس IP که کاربر از آن وارد شده است
+        [StringLength(45)]
+        public string? IpAddress { get; set; }
+
+        [StringLength(512)]
+        public string? DeviceInfo { get; set; }
+
+        public bool IsSuccessful { get; set; }
 
         [StringLength(255)]
-        public string DeviceInfo { get; set; } // اطلاعات دستگاه یا مرورگر کاربر (مثلاً User-Agent)
-
-        public bool IsSuccessful { get; set; } // آیا این ورود موفق بوده است یا خیر؟
-                                               // (مفید برای ردیابی تلاش‌های ناموفق ورود)
-
-        [StringLength(255)]
-        public string FailureReason { get; set; } // اگر ورود ناموفق بود، دلیل آن (مثلاً "رمز عبور اشتباه")
+        public string? FailureReason { get; set; }
 
         [Required]
-        public DateTime EventTime { get; set; } // زمان وقوع رویداد (ورود یا خروج)
+        public DateTime EventTime { get; set; } = DateTime.UtcNow;
 
-        public LoginEventType EventType { get; set; } // نوع رویداد
+        public LoginEventType EventType { get; set; }
 
-        // Navigation Property
-        // این خاصیت به Entity Framework Core کمک می‌کند تا ارتباط بین LoginHistory و User را درک کند.
-        [ForeignKey("UserID")]
-        public virtual User User { get; set; }
+        [ForeignKey(nameof(UserId))]
+        public virtual User User { get; set; } = null!;
     }
 }

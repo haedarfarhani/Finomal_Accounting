@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Finomal.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251023104045_Finomal")]
+    [Migration("20260224134056_Finomal")]
     partial class Finomal
     {
         /// <inheritdoc />
@@ -81,7 +81,7 @@ namespace Finomal.Infrastructure.Data.Migrations
 
                     b.HasIndex("BranchId");
 
-                    b.ToTable("AccountingDocuments");
+                    b.ToTable("AccountingDocuments", (string)null);
                 });
 
             modelBuilder.Entity("Finomal.Domain.Accounting.Bank", b =>
@@ -302,16 +302,15 @@ namespace Finomal.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("Finomal.Domain.Users.LoginHistory", b =>
                 {
-                    b.Property<int>("LoginHistoryID")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LoginHistoryID"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("DeviceInfo")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
 
                     b.Property<DateTime>("EventTime")
                         .HasColumnType("datetime2");
@@ -320,37 +319,35 @@ namespace Finomal.Infrastructure.Data.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("FailureReason")
-                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
                     b.Property<string>("IpAddress")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(45)
+                        .HasColumnType("nvarchar(45)");
 
                     b.Property<bool>("IsSuccessful")
                         .HasColumnType("bit");
 
-                    b.Property<int>("UserID")
-                        .HasColumnType("int");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
 
-                    b.HasKey("LoginHistoryID");
+                    b.HasKey("Id");
 
-                    b.HasIndex("UserID");
+                    b.HasIndex("UserId", "EventTime");
 
-                    b.ToTable("loginHistories");
+                    b.ToTable("LoginHistories", (string)null);
                 });
 
             modelBuilder.Entity("Finomal.Domain.Users.Role", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedDate")
@@ -361,41 +358,58 @@ namespace Finomal.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Name")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<string>("NormalizedName")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Roles");
+                    b.HasIndex("NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("Roles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("2782a255-7f3b-479e-878b-1e6cd5df119d"),
+                            ConcurrencyStamp = "cf47c929-6b5a-41e2-8a18-2efc52a54f88",
+                            CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "نقش مدیر سیستم با دسترسی کامل",
+                            Name = "Administrator",
+                            NormalizedName = "ADMINISTRATOR"
+                        });
                 });
 
             modelBuilder.Entity("Finomal.Domain.Users.User", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
 
                     b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Email")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
 
                     b.Property<string>("FirstName")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
@@ -418,7 +432,6 @@ namespace Finomal.Infrastructure.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("LastName")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
@@ -435,10 +448,12 @@ namespace Finomal.Infrastructure.Data.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("NormalizedEmail")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("NormalizedUserName")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
@@ -450,8 +465,8 @@ namespace Finomal.Infrastructure.Data.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("RefreshToken")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
 
                     b.Property<DateTime?>("RefreshTokenExpiryTime")
                         .HasColumnType("datetime2");
@@ -463,32 +478,76 @@ namespace Finomal.Infrastructure.Data.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("UserName")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users");
+                    b.HasIndex("NormalizedEmail");
+
+                    b.HasIndex("NormalizedUserName")
+                        .IsUnique();
+
+                    b.ToTable("Users", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("3ba40853-073d-4e5d-b084-19521f712192"),
+                            AccessFailedCount = 0,
+                            ConcurrencyStamp = "6541f74a-c043-4016-bb46-3af22c45acc2",
+                            CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "admin@finomal.ir",
+                            EmailConfirmed = true,
+                            FirstName = "مدیر",
+                            IsActive = true,
+                            IsDeleted = false,
+                            IsLockedOut = false,
+                            LastName = "سیستم",
+                            LockoutEnabled = true,
+                            LoginAttempts = 0,
+                            NormalizedEmail = "ADMIN@FINOMAL.IR",
+                            NormalizedUserName = "ADMIN",
+                            PasswordHash = "$2a$2b$10$jwcaPIlNlCCBQe1EkgtENeugA6xTVJHikfZAirBrVSRnkQuHgoOSi",
+                            PhoneNumberConfirmed = false,
+                            SecurityStamp = "7cb7af88-6ba7-4b37-8700-e201e6a0bbc1",
+                            TwoFactorEnabled = false,
+                            UserName = "admin"
+                        });
                 });
 
             modelBuilder.Entity("Finomal.Domain.Users.UserRole", b =>
                 {
-                    b.Property<int>("UserID")
-                        .HasColumnType("int");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("RoleID")
-                        .HasColumnType("int");
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("AssignedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UserRoleID")
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    b.HasKey("UserID", "RoleID");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.HasIndex("RoleID");
+                    b.HasKey("UserId", "RoleId");
 
-                    b.ToTable("userRoles");
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("UserRoles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            UserId = new Guid("3ba40853-073d-4e5d-b084-19521f712192"),
+                            RoleId = new Guid("2782a255-7f3b-479e-878b-1e6cd5df119d"),
+                            AssignedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Id = 0
+                        });
                 });
 
             modelBuilder.Entity("Finomal.Domain.Accounting.AccountingDocument", b =>
@@ -541,7 +600,7 @@ namespace Finomal.Infrastructure.Data.Migrations
                 {
                     b.HasOne("Finomal.Domain.Users.User", "User")
                         .WithMany("LoginHistories")
-                        .HasForeignKey("UserID")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -552,13 +611,13 @@ namespace Finomal.Infrastructure.Data.Migrations
                 {
                     b.HasOne("Finomal.Domain.Users.Role", "Role")
                         .WithMany("UserRoles")
-                        .HasForeignKey("RoleID")
+                        .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Finomal.Domain.Users.User", "User")
                         .WithMany("UserRoles")
-                        .HasForeignKey("UserID")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

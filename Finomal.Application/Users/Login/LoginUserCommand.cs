@@ -7,6 +7,6 @@ namespace Finomal.Application.Users.Login
     {
         public required string UserName { get; set; }
         public required string Password { get; set; }
-        public required int RoleId { get; set; }
+        public required Guid RoleId { get; set; }
     }
 }

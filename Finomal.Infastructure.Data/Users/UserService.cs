@@ -1,7 +1,11 @@
 ﻿using Finomal.Application.Users;
 using Finomal.Domain.Users;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text;
 
 namespace Finomal.Infrastructure.Data.Users
 {
@@ -9,40 +13,89 @@ namespace Finomal.Infrastructure.Data.Users
     {
         private readonly IUserRepository _userRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly string _jwtSecretKey;
 
-        public UserService(IUserRepository userRepository, IHttpContextAccessor httpContextAccessor)
+        public UserService(
+            IUserRepository userRepository,
+            IHttpContextAccessor httpContextAccessor,
+            IConfiguration configuration)
         {
-            _userRepository = userRepository;
-            _httpContextAccessor = httpContextAccessor;
+            _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+            _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
+
+            _jwtSecretKey = configuration["Jwt:Key"]
+                ?? throw new InvalidOperationException("Jwt:Key در appsettings یافت نشد.");
         }
 
-        public async Task<string> GetCurrentUserIdAsync()
+        /// <summary>
+        /// استخراج شناسه کاربر (Guid) از توکن JWT در هدر Authorization
+        /// </summary>
+        public Guid? GetCurrentUserId()
         {
-            //var principal = _httpContextAccessor.HttpContext?.User;
-            //if (principal == null)
-            //{
-            //    throw new UnauthorizedAccessException("No authenticated user found.");
-            //}
+            var context = _httpContextAccessor.HttpContext;
+            if (context == null)
+            {
+                return null;
+            }
 
-            //var userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            //if (string.IsNullOrEmpty(userId))
-            //{
-            //    throw new UnauthorizedAccessException("User ID not found in claims.");
-            //}
+            string? authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
 
-            return "userId";
+            string token = authHeader["Bearer ".Length..].Trim();
+
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var key = Encoding.UTF8.GetBytes(_jwtSecretKey);
+
+                var validationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                };
+
+                var principal = tokenHandler.ValidateToken(token, validationParameters, out _);
+
+                var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                               ?? principal.FindFirst("sub")?.Value;
+
+                return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
+            }
+            catch
+            {
+                // توکن نامعتبر یا هر خطای دیگر → کاربر شناسایی نشد
+                return null;
+            }
         }
 
-        public async Task<bool> IsCurrentUserInRoleAsync(int roleId)
+        public async Task<bool> IsCurrentUserInRoleAsync(Guid roleId)
         {
-            var userId = await GetCurrentUserIdAsync();
-            var roles = await GetUserRolesAsync(roleId);
-            return roles.Any(rl => rl.Id == roleId);
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                return false;
+            }
+
+            var roles = await GetCurrentUserRolesAsync();
+            return roles.Any(r => r.Id == roleId);
         }
 
-        public async Task<IReadOnlyList<Role>> GetUserRolesAsync(int userId)
+        public async Task<IReadOnlyList<Role>> GetCurrentUserRolesAsync()
         {
-            return await _userRepository.GetUserRolesAsync(userId);
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                return Array.Empty<Role>().AsReadOnly();
+            }
+
+            return await _userRepository.GetRolesByUserIdAsync(userId.Value);
         }
 
         public async Task<IReadOnlyList<Role>> GetAllRolesAsync()
@@ -50,29 +103,32 @@ namespace Finomal.Infrastructure.Data.Users
             return await _userRepository.GetAllRolesAsync();
         }
 
-        public async Task AddUserToRoleAsync(int userId, int roleId)
+        public async Task<User?> GetUserByIdAsync(Guid userId)
+        {
+            return await _userRepository.GetByIdAsync(userId);
+        }
+
+        public async Task<User?> GetUserByUserNameAsync(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+                return null;
+
+            return await _userRepository.GetByUserNameAsync(username);
+        }
+
+        public async Task<Role?> GetRoleByIdAsync(Guid roleId)
+        {
+            return await _userRepository.GetRoleByIdAsync(roleId);
+        }
+
+        public async Task AddUserToRoleAsync(Guid userId, Guid roleId)
         {
             await _userRepository.AddUserToRoleAsync(userId, roleId);
         }
 
-        public async Task RemoveUserFromRoleAsync(int userId, int roleId)
+        public async Task RemoveUserFromRoleAsync(Guid userId, Guid roleId)
         {
             await _userRepository.RemoveUserFromRoleAsync(userId, roleId);
-        }
-
-        public async Task<User?> GetUserByUserNameAsync(string UserName)
-        {
-            return await _userRepository.GetUserByUserNameAsync(UserName);
-        }
-
-        public async Task<User?> GetUserByIdAsync(int userId)
-        {
-            return await _userRepository.GetUserByIdAsync(userId);
-        }
-
-        public Task<Role?> GetRoleByIdAsync(int roleId)
-        {
-            return _userRepository.GetRoleByIdAsync(roleId);
         }
     }
 }
