@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Finomal.Application.Users.Dtos
+﻿namespace Finomal.Application.Users.Dtos
 {
-    public class RoleDto()
-    {
-        public Guid Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-    }
+    public record RoleDto(
+        string Id,
+        string Name,
+        string? DisplayName
+    );
 }

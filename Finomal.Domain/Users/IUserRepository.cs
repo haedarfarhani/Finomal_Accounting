@@ -32,7 +32,7 @@
 
         Task SoftDeleteAsync(Guid userId);
 
-        Task RestoreAsync(Guid userId);               // بازگردانی کاربر حذف‌شده (اختیاری)
+        Task RestoreAsync(Guid userId);
 
         // ────────────────────────────────────────────────
         //                    Roles

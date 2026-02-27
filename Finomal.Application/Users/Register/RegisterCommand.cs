@@ -1,11 +1,8 @@
 ﻿using Finomal.Application.Abstractions;
 using Finomal.Application.Users.Dtos;
-using Finomal.Domain.Abstractions;
 
 namespace Finomal.Application.Users.Register
 {
-    // فرض می‌کنیم ICommand<Result<RegisterResponseDto>> را برمی‌گرداند.
-    // RegisterResponseDto می‌تواند شامل UserId و پیام موفقیت باشد.
     public class RegisterCommand : ICommand<RegisterResponseDto>
     {
         public required string UserName { get; set; }

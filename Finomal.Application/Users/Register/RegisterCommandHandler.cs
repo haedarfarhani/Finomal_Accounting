@@ -22,26 +22,20 @@ namespace Finomal.Application.Users.Register
             if (string.IsNullOrWhiteSpace(request.UserName) ||
                 string.IsNullOrWhiteSpace(request.Password) ||
                 string.IsNullOrWhiteSpace(request.Email) ||
-                request.RoleId == null) 
+                request.RoleId == null)
             {
                 return Result.Fail<RegisterResponseDto>("همه فیلدهای ضروری باید پر شوند.");
             }
 
-            // 2. بررسی وجود نام کاربری/ایمیل تکراری
+            // 2. بررسی وجود نام کاربری
             var existingUser = await _userRepository.GetByUserNameAsync(request.UserName);
             if (existingUser != null)
             {
                 return Result.Fail<RegisterResponseDto>("نام کاربری قبلاً وجود دارد.");
             }
-            // توصیه می‌شود که بررسی ایمیل تکراری را هم اضافه کنید
-            //var existingEmailUser = await _userRepository.GetUserByEmailAsync(request.Email);
-            //if (existingEmailUser != null)
-            //{
-            //    return Result.Fail<RegisterResponseDto>("ایمیل قبلاً ثبت شده است.");
-            //}
 
             // 3. یافتن نقش
-            var role = await _userRepository.GetRoleByIdAsync(request.RoleId); // از .Value برای گرفتن مقدار از nullable استفاده کنید
+            var role = await _userRepository.GetRoleByIdAsync(request.RoleId);
             if (role == null)
             {
                 return Result.Fail<RegisterResponseDto>("نقش مشخص شده یافت نشد.");
@@ -53,7 +47,7 @@ namespace Finomal.Application.Users.Register
             // 5. ایجاد کاربر جدید
             var newUser = new User
             {
-                RefreshToken = null, 
+                RefreshToken = null,
                 RefreshTokenExpiryTime = null,
                 UserName = request.UserName,
                 PasswordHash = passwordHash,
@@ -61,11 +55,10 @@ namespace Finomal.Application.Users.Register
                 FirstName = request.FirstName,
                 LastName = request.LastName,
                 CreatedDate = DateTime.Now,
-                IsActive = false, // کاربر جدید به طور پیش‌فرض فعال است (طبق منطق کسب و کار شما)
+                IsActive = false,
                 LoginAttempts = 0,
-                IsLockedOut = true, // کاربر جدید به طور پیش‌فرض قفل نیست
-                // UserRoles را اینجا مقداردهی اولیه نکنید، در مرحله بعدی اضافه می‌شود
-                UserRoles = new List<UserRole>() // مقداردهی اولیه به یک لیست خالی
+                IsLockedOut = true,
+                UserRoles = new List<UserRole>()
             };
 
             // 6. اختصاص نقش به کاربر

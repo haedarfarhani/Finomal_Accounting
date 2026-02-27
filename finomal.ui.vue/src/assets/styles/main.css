@@ -1,0 +1,134 @@
+/* تعریف تمام وزن‌های فونت وزیر متن */
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('@/assets/fonts/vazirmatn_thin.ttf') format('truetype');
+  font-weight: 100;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('@/assets/fonts/vazirmatn_extralight.ttf') format('truetype');
+  font-weight: 200;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('@/assets/fonts/vazirmatn_light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('@/assets/fonts/vazirmatn_regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('@/assets/fonts/vazirmatn_medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('@/assets/fonts/vazirmatn_semibold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('@/assets/fonts/vazirmatn_bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('@/assets/fonts/vazirmatn_extrabold.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('@/assets/fonts/vazirmatn_black.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+}
+
+
+:root {
+  --v-font-family: 'Vazirmatn', sans-serif !important;
+  --bg: #07090f;
+  --surface: #0d1117;
+  --surface2: #111827;
+  --border: rgba(255, 255, 255, 0.07);
+  --border2: rgba(255, 255, 255, 0.04);
+  --text: #e2e8f0;
+  --muted: #475569;
+  --muted2: #334155;
+  --green: #34d399;
+  --red: #f87171;
+  --blue: #60a5fa;
+  --orange: #fb923c;
+  --purple: #a78bfa;
+  --cyan: #38bdf8;
+  --amber: #fbbf24;
+  --font: 'Vazirmatn', sans-serif;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --border-focus: rgba(56, 189, 248, 0.4);
+  --faint: #1e293b;
+
+  --surface3: #1a2030;
+  --accent: #63b3ed;
+  --accent2: #4299e1;
+  --shadow: 0 20px 60px rgba(0, 0, 0, .5);
+}
+
+body,
+.v-application {
+  font-family: 'Vazirmatn', sans-serif !important;
+  line-height: 1.6;
+}
+
+
+.font-weight-black {
+  font-weight: 900 !important;
+}
+
+.font-weight-bold {
+  font-weight: 700 !important;
+}
+
+.font-weight-medium {
+  font-weight: 500 !important;
+}
+
+.font-weight-regular {
+  font-weight: 400 !important;
+}
+
+.rtl-flip {
+  transform: scaleX(-1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100%;
+}

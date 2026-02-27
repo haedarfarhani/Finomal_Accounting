@@ -17,7 +17,6 @@
 
         <!-- ===== Left Panel - Branding ===== -->
         <v-col cols="12" md="6" class="brand-panel d-none d-md-flex flex-column justify-space-between pa-12">
-
           <div class="brand-top">
             <div class="brand-logo-wrap">
               <v-icon size="36" class="brand-logo-icon">mdi-chart-finance</v-icon>
@@ -63,7 +62,6 @@
           <div class="brand-bottom">
             <div class="copyright">© ۱۴۰۳ فینومال — تمام حقوق محفوظ است</div>
           </div>
-
         </v-col>
 
         <!-- ===== Right Panel - Login Form ===== -->
@@ -83,7 +81,7 @@
             </div>
 
             <!-- Form -->
-            <v-form ref="loginForm" @submit.prevent="handleLogin">
+            <v-form ref="formRef" @submit.prevent="handleLogin">
 
               <!-- Username -->
               <div class="field-wrap mb-5">
@@ -91,7 +89,7 @@
                 <v-text-field v-model="form.username" :rules="[rules.required]" placeholder="نام کاربری یا ایمیل"
                   variant="outlined" density="comfortable" class="login-field"
                   :class="{ 'field-focused': focusedField === 'username' }" @focus="focusedField = 'username'"
-                  @blur="focusedField = ''" hide-details="auto" autocomplete="username">
+                  @blur="focusedField = ''" hide-details="auto" autocomplete="username" :disabled="loading">
                   <template #prepend-inner>
                     <v-icon size="18" class="field-icon">mdi-account-outline</v-icon>
                   </template>
@@ -99,12 +97,12 @@
               </div>
 
               <!-- Password -->
-              <div class="field-wrap mb-2">
+              <div class="field-wrap mb-5">
                 <label class="field-label">رمز عبور</label>
                 <v-text-field v-model="form.password" :rules="[rules.required]" :type="showPass ? 'text' : 'password'"
                   placeholder="رمز عبور خود را وارد کنید" variant="outlined" density="comfortable" class="login-field"
                   :class="{ 'field-focused': focusedField === 'password' }" @focus="focusedField = 'password'"
-                  @blur="focusedField = ''" hide-details="auto" autocomplete="current-password">
+                  @blur="focusedField = ''" hide-details="auto" autocomplete="current-password" :disabled="loading">
                   <template #prepend-inner>
                     <v-icon size="18" class="field-icon">mdi-lock-outline</v-icon>
                   </template>
@@ -119,31 +117,35 @@
               <!-- Role Select -->
               <div class="field-wrap mb-5">
                 <label class="field-label">نقش کاربری</label>
-                <v-select v-model="form.role" :items="roles" :rules="[rules.required]" item-title="name" item-value="id"
-                  placeholder="نقش خود را انتخاب کنید" variant="outlined" density="comfortable" class="login-field"
-                  :class="{ 'field-focused': focusedField === 'role' }" @focus="focusedField = 'role'"
-                  @blur="focusedField = ''" hide-details="auto" :loading="rolesLoading">
+                <v-select v-model="form.roleId" :items="rolesList" :rules="[rules.required]" item-title="name"
+                  item-value="id" placeholder="نقش خود را انتخاب کنید" variant="outlined" density="comfortable"
+                  class="login-field" :class="{ 'field-focused': focusedField === 'role' }"
+                  @focus="focusedField = 'role'" @blur="focusedField = ''" hide-details="auto" :loading="rolesLoading"
+                  :disabled="loading || rolesLoading" no-data-text="نقشی یافت نشد">
                   <template #prepend-inner>
                     <v-icon size="18" class="field-icon">mdi-shield-account-outline</v-icon>
                   </template>
                 </v-select>
               </div>
 
-              <!-- Forgot + Remember -->
+              <!-- Remember & Forgot -->
               <div class="d-flex align-center justify-space-between mb-7">
                 <v-checkbox v-model="form.remember" label="مرا به خاطر بسپار" density="compact" hide-details
                   class="remember-check" />
-                <a href="#" class="forgot-link">فراموشی رمز عبور</a>
+                <a href="#" class="forgot-link" @click.prevent="handleForgotPassword">
+                  فراموشی رمز عبور
+                </a>
               </div>
 
-              <!-- Error -->
+              <!-- Error alert -->
               <v-alert v-if="errorMsg" type="error" variant="tonal" class="mb-5 login-alert" rounded="lg"
-                density="compact">
+                density="compact" closable @click:close="errorMsg = ''">
                 {{ errorMsg }}
               </v-alert>
 
               <!-- Submit -->
-              <v-btn type="submit" block size="large" class="login-btn" :loading="loading" elevation="0" rounded="lg">
+              <v-btn type="submit" block size="large" class="login-btn" :loading="loading" elevation="0" rounded="lg"
+                :disabled="!isFormReady">
                 <template #loader>
                   <v-progress-circular indeterminate size="20" width="2" color="white" />
                 </template>
@@ -153,6 +155,12 @@
 
             </v-form>
 
+            <!-- Connection status indicator -->
+            <div class="connection-status mt-3" :class="connectionStatusClass">
+              <span class="status-dot"></span>
+              <span class="status-text">{{ connectionStatusText }}</span>
+            </div>
+
             <!-- Divider -->
             <div class="or-divider my-6">
               <div class="or-line" />
@@ -160,14 +168,13 @@
               <div class="or-line" />
             </div>
 
-            <!-- Guest login -->
-            <v-btn block variant="outlined" size="large" class="guest-btn" rounded="lg" elevation="0"
-              @click="loginAsGuest">
-              <v-icon class="me-2" size="18">mdi-account-eye-outline</v-icon>
-              ورود به عنوان مهمان
+            <!-- Register link -->
+            <v-btn block variant="outlined" size="large" class="guest-btn" rounded="lg" elevation="0" to="/register">
+              <v-icon class="me-2" size="18">mdi-account-plus-outline</v-icon>
+              ثبت‌نام در فینومال
             </v-btn>
 
-            <!-- Footer note -->
+            <!-- Footer -->
             <div class="form-footer mt-6">
               <span>نسخه آزمایشی ۱.۰.۰ — </span>
               <a href="#" class="footer-link">تماس با پشتیبانی</a>
@@ -177,211 +184,170 @@
         </v-col>
 
       </v-row>
-    </v-container> </v-main>
+    </v-container>
+  </v-main>
 </template>
 
-<script>
-import * as signalR from "@microsoft/signalr";
+<script setup>
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthHub } from '@/composables/useAuthHub'
 
-export default {
-  name: "LoginPage",
+// ── Router & Hub ──────────────────────────────────────────────────────────────
+const router = useRouter()
+const {
+  isConnected, isConnecting, connectionError,
+  loginResult, rolesList,
+  connect, login, fetchRoles,
+} = useAuthHub()
 
-  data() {
-    return {
-      form: {
-        username: "",
-        password: "",
-        remember: false,
-        role: null,
-      },
-      showPass: false,
-      loading: false,
-      errorMsg: "",
-      rolesLoading: false,
-      roles: [],
-      connection: null,           // اتصال SignalR مشترک
-      connectionPromise: null,    // جلوگیری از اتصال تکراری
-      rules: {
-        required: (v) => !!v?.toString().trim() || "این فیلد الزامی است",
-      },
-      chartBars: [28, 42, 35, 55, 38, 62, 48, 70, 52, 78, 60, 88, 65, 95, 72],
-      features: [
-        "مدیریت کامل اسناد حسابداری",
-        "انبارداری و کنترل موجودی",
-        "حقوق و دستمزد پرسنل",
-        "گزارش‌های مالی جامع",
-        "سازگار با سامانه مودیان",
-      ],
-    };
-  },
+// ── Template refs ────────────────────────────────────────────────────────────
+const formRef = ref(null)
 
-  computed: {
-    isFormValid() {
-      return (
-        this.form.username.trim() &&
-        this.form.password.trim() &&
-        this.form.role !== null
-      );
-    },
-  },
+// ── Form state ────────────────────────────────────────────────────────────────
+const form = ref({
+  username: '',
+  password: '',
+  roleId: null,
+  remember: false,
+})
 
-  methods: {
-    // اتصال پایدار به SignalR (فقط یک بار ساخته می‌شود)
-    async ensureConnection() {
-      if (this.connectionPromise) {
-        return this.connectionPromise;
-      }
+const showPass = ref(false)
+const focusedField = ref('')
+const loading = ref(false)
+const rolesLoading = ref(false)
+const errorMsg = ref('')
 
-      this.connectionPromise = new Promise(async (resolve, reject) => {
-        try {
-          this.connection = new signalR.HubConnectionBuilder()
-            .withUrl("https://localhost:7272/AccountingHub")
-            .withAutomaticReconnect({
-              nextRetryDelayInMilliseconds: (retryContext) => {
-                return Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 30000);
-              },
-            })
-            .configureLogging(signalR.LogLevel.Information)
-            .build();
+// ── Static data ───────────────────────────────────────────────────────────────
+const chartBars = [28, 42, 35, 55, 38, 62, 48, 70, 52, 78, 60, 88, 65, 95, 72]
 
-          // Listenerهای عمومی
-          this.connection.on("LoginResult", (result) => {
-            this.handleLoginResponse(result);
-          });
+const features = [
+  'مدیریت کامل اسناد حسابداری',
+  'انبارداری و کنترل موجودی',
+  'حقوق و دستمزد پرسنل',
+  'گزارش‌های مالی جامع',
+  'سازگار با سامانه مودیان',
+]
 
-          await this.connection.start();
-          console.log("SignalR Connected");
-          resolve();
-        } catch (err) {
-          console.error("SignalR connection failed:", err);
-          this.connection = null;
-          this.connectionPromise = null;
-          reject(err);
-        }
-      });
+// ── Validation rules ──────────────────────────────────────────────────────────
+const rules = {
+  required: (v) => !!v?.toString().trim() || 'این فیلد الزامی است',
+}
 
-      return this.connectionPromise;
-    },
+// ── Computed ──────────────────────────────────────────────────────────────────
+const isFormReady = computed(() =>
+  form.value.username.trim() &&
+  form.value.password.trim() &&
+  form.value.roleId !== null &&
+  !loading.value
+)
 
-    // درخواست لیست نقش‌ها
-    async fetchRoles() {
-      if (this.rolesLoading || this.roles.length > 0) return;
+const connectionStatusClass = computed(() => {
+  if (isConnecting.value) return 'status-connecting'
+  if (isConnected.value) return 'status-ok'
+  return 'status-err'
+})
 
-      this.rolesLoading = true;
-      try {
-        await this.ensureConnection();
+const connectionStatusText = computed(() => {
+  if (isConnecting.value) return 'در حال اتصال...'
+  if (isConnected.value) return 'متصل به سرور'
+  if (connectionError.value) return 'خطا در اتصال'
+  return 'قطع اتصال'
+})
 
-        // دریافت نقش‌ها
-        const roles = await new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error("Timeout")), 10000);
+// ── Watch login result from hub ───────────────────────────────────────────────
+watch(loginResult, (result) => {
+  if (!result) return
+  loading.value = false
 
-          this.connection.on("RolesList", (data) => {
-            clearTimeout(timeout);
-            resolve(Array.isArray(data) ? data : data?.data || []);
-          });
+  if (result.isSuccess) {
+    _persistSession(result.data ?? result.value ?? result)
+    router.push('/')
+  } else {
+    errorMsg.value = result.message ?? result.errors?.[0]?.message ?? 'نام کاربری یا رمز عبور اشتباه است'
+  }
+})
 
-          this.connection.on("RolesError", (err) => {
-            clearTimeout(timeout);
-            reject(err?.message || "خطا در بارگذاری نقش‌ها");
-          });
+// ── Lifecycle ────────────────────────────────────────────────────────────────
+onMounted(async () => {
+  await _loadRoles()
+  _restoreRemembered()
+})
 
-          this.connection.invoke("GetAvailableRoles").catch(reject);
-        });
+// ── Handlers ─────────────────────────────────────────────────────────────────
+async function handleLogin() {
+  const { valid } = await formRef.value.validate()
+  if (!valid || !isFormReady.value) return
 
-        this.roles = roles.map(role => ({
-          id: role.id,
-          name: role.name || role.Name || "نامشخص"
-        }));
+  loading.value = true
+  errorMsg.value = ''
 
-      } catch (err) {
-        console.error("Fetch roles error:", err);
-        this.errorMsg = "خطا در بارگذاری نقش‌ها";
-      } finally {
-        this.rolesLoading = false;
-      }
-    },
+  try {
+    await login({
+      userName: form.value.username,
+      password: form.value.password,
+      roleId: form.value.roleId,
+    })
+    // پاسخ از طریق watch(loginResult) دریافت می‌شود
+  } catch (err) {
+    loading.value = false
+    errorMsg.value = _mapError(err)
+  }
+}
 
-    // مدیریت پاسخ ورود
-    handleLoginResponse(result) {
-      this.loading = false;
+function handleForgotPassword() {
+  router.push('/forgot-password')
+}
 
-      if (result?.isSuccess) {
-        const { token, userId, username, roleId, expiresIn, refreshToken, refreshTokenExpiry } = result.data || result.value || {};
+// ── Private helpers ───────────────────────────────────────────────────────────
+async function _loadRoles() {
+  if (rolesList.value.length > 0) return
+  rolesLoading.value = true
+  try {
+    await fetchRoles()
+  } catch (err) {
+    errorMsg.value = 'خطا در بارگذاری نقش‌ها — صفحه را رفرش کنید'
+  } finally {
+    rolesLoading.value = false
+  }
+}
 
-        localStorage.setItem("jwt", token);
-        localStorage.setItem("userRole", roleId || this.form.role);
-        localStorage.setItem("username", username || this.form.username);
-        localStorage.setItem("tokenTime", Date.now().toString());
+function _persistSession(data) {
+  const storage = form.value.remember ? localStorage : sessionStorage
 
-        // اگر refresh token دارید
-        if (refreshToken) {
-          localStorage.setItem("refreshToken", refreshToken);
-          localStorage.setItem("refreshTokenExpiry", refreshTokenExpiry);
-        }
+  storage.setItem('jwt', data.token ?? '')
+  storage.setItem('userId', data.userId ?? '')
+  storage.setItem('userName', data.userName ?? form.value.username)
+  storage.setItem('userRole', data.roleId ?? form.value.roleId)
+  storage.setItem('tokenTime', Date.now().toString())
 
-        this.$router.push("/");
-      } else {
-        this.errorMsg = result?.message || result?.errors?.[0]?.message || "ورود ناموفق";
-      }
+  if (data.refreshToken) {
+    storage.setItem('refreshToken', data.refreshToken)
+    storage.setItem('refreshTokenExpiry', data.refreshTokenExpiry ?? '')
+  }
 
-      // قطع اتصال بعد از پاسخ (اختیاری)
-      // this.connection?.stop();
-    },
+  if (form.value.remember) {
+    localStorage.setItem('rememberedUser', form.value.username)
+  } else {
+    localStorage.removeItem('rememberedUser')
+  }
+}
 
-    async handleLogin() {
-      const { valid } = await this.$refs.loginForm.validate();
-      if (!valid || !this.isFormValid) return;
+function _restoreRemembered() {
+  const saved = localStorage.getItem('rememberedUser')
+  if (saved) {
+    form.value.username = saved
+    form.value.remember = true
+  }
+}
 
-      this.loading = true;
-      this.errorMsg = "";
-
-      try {
-        await this.ensureConnection();
-        const roleId = this.form.role?.id ?? this.form.role;
-
-        if (!roleId || roleId === "") {
-          this.errorMsg = "لطفاً یک نقش معتبر انتخاب کنید";
-          this.loading = false;
-          return;
-        }
-
-        await this.connection.invoke("Login", {
-          UserName: this.form.username.trim(),
-          Password: this.form.password,
-          RoleId: roleId, // ✅ عدد صحیح دسیمال (مثلاً 43 به جای "2b")
-        });
-
-      } catch (err) {
-        this.errorMsg = err.message?.includes("401")
-          ? "نام کاربری یا رمز عبور اشتباه است"
-          : "خطا در ارتباط با سرور";
-        console.error("Login failed:", err);
-      } finally {
-        this.loading = false;
-      }
-    },
-
-    loginAsGuest() {
-      localStorage.setItem("userRole", "0");
-      localStorage.setItem("isGuest", "true");
-      this.$router.push("/");
-    },
-  },
-
-  mounted() {
-    this.fetchRoles();
-  },
-
-  beforeUnmount() {
-    if (this.connection) {
-      this.connection.off("LoginResult");
-      this.connection.off("RolesList");
-      this.connection.off("RolesError");
-      this.connection.stop();
-      this.connection = null;
-    }
-  },
-};
+function _mapError(err) {
+  const msg = err?.message ?? ''
+  if (msg.includes('401')) return 'نام کاربری یا رمز عبور اشتباه است'
+  if (msg.includes('403')) return 'دسترسی غیرمجاز'
+  if (msg.includes('Timeout')) return 'سرور پاسخ نمی‌دهد — دوباره تلاش کنید'
+  return 'خطا در ارتباط با سرور'
+}
 </script>
 
 <style scoped>
@@ -405,7 +371,9 @@ export default {
 }
 
 .bg-grid {
-  background-image: linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px);
+  background-image:
+    linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px);
   background-size: 48px 48px;
 }
 
@@ -606,7 +574,6 @@ export default {
   background: rgba(56, 189, 248, 0.2);
   border-radius: 3px 3px 0 0;
   animation: barGrow 0.6s ease-out both;
-  transition: background 0.2s;
 }
 
 .mini-bar.active {
@@ -685,61 +652,6 @@ export default {
   margin-top: 6px;
 }
 
-/* ===== Role Selector ===== */
-.role-selector {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  direction: rtl;
-}
-
-.role-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 6px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: 'Vazirmatn', 'Tahoma', sans-serif;
-}
-
-.role-btn:hover {
-  border-color: rgba(56, 189, 248, 0.3);
-  background: rgba(56, 189, 248, 0.05);
-}
-
-.role-btn--active {
-  border-color: rgba(56, 189, 248, 0.6) !important;
-  background: rgba(56, 189, 248, 0.1) !important;
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
-}
-
-.role-btn--active .role-icon {
-  color: #38bdf8 !important;
-}
-
-.role-btn--active .role-label {
-  color: #38bdf8 !important;
-}
-
-.role-icon {
-  color: #475569 !important;
-  transition: color 0.2s;
-}
-
-.role-label {
-  font-size: 11px;
-  color: #64748b;
-  transition: color 0.2s;
-  white-space: nowrap;
-}
-
-/* Fields */
 .field-label {
   display: block;
   font-size: 12px;
@@ -747,6 +659,7 @@ export default {
   color: #64748b;
   margin-bottom: 8px;
   text-align: right;
+  font-family: 'Vazirmatn', 'Tahoma', sans-serif;
 }
 
 :deep(.login-field .v-field) {
@@ -754,12 +667,6 @@ export default {
   border-radius: 10px !important;
   transition: all 0.2s !important;
   font-family: 'Vazirmatn', 'Tahoma', sans-serif !important;
-  direction: rtl !important;
-}
-
-:deep(.login-field .v-field--outlined .v-field__outline) {
-  --v-field-border-opacity: 1;
-  color: rgba(255, 255, 255, 0.08) !important;
 }
 
 :deep(.login-field.field-focused .v-field) {
@@ -767,13 +674,13 @@ export default {
   box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2) !important;
 }
 
-:deep(.login-field .v-field__input) {
+:deep(.login-field .v-field__input),
+:deep(.login-field input) {
   font-family: 'Vazirmatn', 'Tahoma', sans-serif !important;
   font-size: 13px !important;
   color: #e2e8f0 !important;
   direction: rtl !important;
   text-align: right !important;
-  padding-right: 0 !important;
 }
 
 :deep(.login-field input::placeholder) {
@@ -802,10 +709,6 @@ export default {
   font-size: 12px !important;
   color: #64748b !important;
   opacity: 1 !important;
-}
-
-:deep(.remember-check .v-checkbox-btn) {
-  color: #475569 !important;
 }
 
 .forgot-link {
@@ -837,13 +740,55 @@ export default {
   transition: all 0.2s !important;
 }
 
-.login-btn:hover {
+.login-btn:hover:not(:disabled) {
   box-shadow: 0 6px 32px rgba(14, 165, 233, 0.45) !important;
   transform: translateY(-1px);
 }
 
-.login-btn:active {
-  transform: translateY(0);
+/* ── Connection status ── */
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: 'Vazirmatn', 'Tahoma', sans-serif;
+  justify-content: center;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: blink 1.8s infinite;
+}
+
+@keyframes blink {
+
+  0%,
+  100% {
+    opacity: 1
+  }
+
+  50% {
+    opacity: 0.3
+  }
+}
+
+.status-ok {
+  color: #4ade80;
+}
+
+.status-connecting {
+  color: #fbbf24;
+}
+
+.status-err {
+  color: #f87171;
+}
+
+.status-text {
+  color: inherit;
 }
 
 .or-divider {
@@ -885,6 +830,7 @@ export default {
   font-size: 11px;
   color: #334155;
   text-align: center;
+  font-family: 'Vazirmatn', 'Tahoma', sans-serif;
 }
 
 .footer-link {

@@ -1,11 +1,12 @@
 ﻿using BlazorCleanArchitecture.Infrastructure.Authentication;
-using Blazored.LocalStorage;
+using Finomal.Application.Abstractions;
 using Finomal.Application.Accounting;
 using Finomal.Application.Users;
 using Finomal.Domain.Accounting;
 using Finomal.Domain.Users;
 using Finomal.Infrastructure.Data.Accounting;
 using Finomal.Infrastructure.Data.Context;
+using Finomal.Infrastructure.Data.Security;
 using Finomal.Infrastructure.Data.Users;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -57,13 +58,21 @@ namespace Finomal.Infrastructure.IoC
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key))
                     };
                 });
-            services.AddSignalR();
+            services.AddSignalR(options =>
+            {
+                options.EnableDetailedErrors = true;
+                options.MaximumReceiveMessageSize = 32_768;
+                options.HandshakeTimeout = TimeSpan.FromSeconds(15);
+                options.KeepAliveInterval = TimeSpan.FromSeconds(10);
+            });
+
 
             services.AddScoped<IAuthenticationService, AuthenticationService>();
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IAccountingRepository, AccountingRepository>();
             services.AddScoped<IAccountingService, AccountingService>();
             services.AddScoped<IUserService, UserService>();
+            services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 
             return services;
         }
