@@ -16,9 +16,9 @@
                     <v-select v-model="selectedYear" :items="years" variant="solo-filled" density="comfortable"
                         hide-details bg-color="rgba(30, 41, 59, 0.4)" class="period-select" rounded="lg"
                         label="سال"></v-select>
-                    <v-select v-model="selectedMonth" :items="months" variant="solo-filled" density="comfortable"
-                        hide-details bg-color="rgba(30, 41, 59, 0.4)" class="period-select" rounded="lg"
-                        label="ماه"></v-select>
+                    <v-select v-model="selectedMonth" :items="monthItems" item-title="title" item-value="value"
+                        variant="solo-filled" density="comfortable" hide-details bg-color="rgba(30, 41, 59, 0.4)"
+                        class="period-select" rounded="lg" label="ماه"></v-select>
                 </div>
 
                 <v-btn color="primary" prepend-icon="mdi-printer" elevation="2" class="print-btn" rounded="lg">
@@ -37,7 +37,7 @@
                 </div>
                 <div class="toolbar-stats text-body-2 text-grey-lighten-1">
                     تعداد فیش‌های صادر شده این ماه: <strong class="text-white mx-1 mono-number">{{ filteredSlips.length
-                        }}</strong> عدد
+                    }}</strong> عدد
                 </div>
             </div>
 
@@ -64,7 +64,8 @@
                             <td>
                                 <div class="d-flex align-center gap-3">
                                     <v-avatar size="36" color="surface-variant" variant="tonal">
-                                        <span class="text-caption font-weight-bold">{{ item.initials }}</span>
+                                        <span class="text-caption font-weight-bold">{{ item.name.substring(0, 2)
+                                            }}</span>
                                     </v-avatar>
                                     <div class="employee-info">
                                         <span class="emp-name text-body-2 font-weight-bold">{{ item.name }}</span>
@@ -73,12 +74,12 @@
                                 </div>
                             </td>
 
-                            <td class="text-caption text-grey-lighten-1">{{ item.position }}</td>
+                            <td class="text-caption text-grey-lighten-1">{{ item.dept }}</td>
 
                             <td class="text-left mono-number">{{ formatCurrency(item.gross) }}</td>
                             <td class="text-left text-error mono-number">{{ formatCurrency(item.deductions) }}</td>
                             <td class="text-left font-weight-bold text-success mono-number">{{ formatCurrency(item.net)
-                                }}</td>
+                            }}</td>
 
                             <td class="text-center action-buttons">
                                 <!-- Action: Open Slip -->
@@ -125,12 +126,13 @@
                         <div class="text-center brand-area">
                             <h2 class="company-name">شرکت توسعه فناوری فینومال</h2>
                             <h3 class="doc-title">فیش حقوق و دستمزد</h3>
-                            <div class="doc-period">دوره: {{ selectedMonth }} ماه {{ selectedYear }}</div>
+                            <div class="doc-period">دوره: {{monthItems.find(m => m.value === selectedMonth)?.title}}
+                                ماه {{ selectedYear }}</div>
                         </div>
                         <div class="date-area">
                             <div class="date-row"><span>تاریخ صدور:</span> <span>۱۴۰۳/۱۱/۳۰</span></div>
                             <div class="date-row"><span>شماره فیش:</span> <span>{{ Math.floor(Math.random() * 899999 +
-                                    100000) }}</span></div>
+                                100000) }}</span></div>
                         </div>
                     </div>
 
@@ -140,8 +142,8 @@
                         <div class="info-item"><span>نام و نام خانوادگی:</span> <strong>{{ selectedSlip.name }}</strong>
                         </div>
                         <div class="info-item"><span>کد پرسنلی:</span> <strong>{{ selectedSlip.code }}</strong></div>
-                        <div class="info-item"><span>کد ملی:</span> <strong>۰۱۲۳۴۵۶۷۸۹</strong></div>
-                        <div class="info-item"><span>سمت:</span> <strong>{{ selectedSlip.position }}</strong></div>
+                        <div class="info-item"><span>کد ملی:</span> <strong>-</strong></div>
+                        <div class="info-item"><span>دپارتمان:</span> <strong>{{ selectedSlip.dept }}</strong></div>
                         <div class="info-item"><span>شماره حساب:</span> <strong>۶۱۰۴۳۳۷۱...</strong></div>
                         <div class="info-item"><span>کارکرد ماه (روز):</span> <strong>۳۰</strong></div>
                     </div>
@@ -161,23 +163,27 @@
                                 <tbody>
                                     <tr>
                                         <td>حقوق پایه</td>
-                                        <td class="text-left">۷۱,۶۶۱,۸۴۰</td>
+                                        <td class="text-left">{{ formatCurrency(selectedSlip.baseSalary) }}</td>
                                     </tr>
                                     <tr>
                                         <td>حق مسکن</td>
-                                        <td class="text-left">۹,۰۰۰,۰۰۰</td>
+                                        <td class="text-left">{{ formatCurrency(selectedSlip.housing) }}</td>
                                     </tr>
                                     <tr>
                                         <td>بن خواروبار</td>
-                                        <td class="text-left">۱۴,۰۰۰,۰۰۰</td>
+                                        <td class="text-left">{{ formatCurrency(selectedSlip.food) }}</td>
                                     </tr>
                                     <tr>
                                         <td>حق اولاد</td>
-                                        <td class="text-left">۷,۱۶۶,۱۸۴</td>
+                                        <td class="text-left">{{ formatCurrency(selectedSlip.child) }}</td>
                                     </tr>
                                     <tr>
                                         <td>اضافه کاری</td>
-                                        <td class="text-left">۱۲,۵۰۰,۰۰۰</td>
+                                        <td class="text-left">{{ formatCurrency(selectedSlip.overtime) }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>سایر مزایا</td>
+                                        <td class="text-left">{{ formatCurrency(selectedSlip.otherAllow) }}</td>
                                     </tr>
                                     <!-- Empty records to stretch -->
                                     <tr>
@@ -212,23 +218,15 @@
                                 <tbody>
                                     <tr>
                                         <td>حق بیمه (۷٪ سهم کارگر)</td>
-                                        <td class="text-left">۶,۰۴۰,۵۲۰</td>
+                                        <td class="text-left">{{ formatCurrency(selectedSlip.insurance) }}</td>
                                     </tr>
                                     <tr>
                                         <td>مالیات بر درآمد</td>
-                                        <td class="text-left">۲,۵۰۰,۰۰۰</td>
-                                    </tr>
-                                    <tr>
-                                        <td>مساعده پرداختی</td>
-                                        <td class="text-left">۰</td>
-                                    </tr>
-                                    <tr>
-                                        <td>جریمه / غیبت</td>
-                                        <td class="text-left">۰</td>
+                                        <td class="text-left">{{ formatCurrency(selectedSlip.tax) }}</td>
                                     </tr>
                                     <tr>
                                         <td>سایر کسورات</td>
-                                        <td class="text-left">۰</td>
+                                        <td class="text-left">{{ formatCurrency(selectedSlip.otherDed) }}</td>
                                     </tr>
                                     <!-- Empty records to stretch -->
                                     <tr>
@@ -276,31 +274,80 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { createHubConnection } from '@/services/signalr';
 
 const years = ['۱۴۰۲', '۱۴۰۳', '۱۴۰۴'];
-const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+const monthItems = [
+    { title: 'فروردین', value: 1 }, { title: 'اردیبهشت', value: 2 }, { title: 'خرداد', value: 3 },
+    { title: 'تیر', value: 4 }, { title: 'مرداد', value: 5 }, { title: 'شهریور', value: 6 },
+    { title: 'مهر', value: 7 }, { title: 'آبان', value: 8 }, { title: 'آذر', value: 9 },
+    { title: 'دی', value: 10 }, { title: 'بهمن', value: 11 }, { title: 'اسفند', value: 12 }
+];
 
 const selectedYear = ref('۱۴۰۳');
-const selectedMonth = ref('بهمن');
+const selectedMonth = ref(11); // Bahman
 const search = ref('');
-
 const slipDialog = ref(false);
 const selectedSlip = ref(null);
+const slipsData = ref([]);
+const loading = ref(false);
+let connection = null;
 
-const slipsData = ref([
-    { id: 1, code: '1001', name: 'علی احمدی', initials: 'ع.ا', position: 'توسعه‌دهنده فرانت‌اند', gross: 114328024, deductions: 8540520, net: 105787504 },
-    { id: 2, code: '1002', name: 'سارا کریمی', initials: 'س.ک', position: 'طراح رابط کاربری', gross: 94661840, deductions: 6040520, net: 88621320 },
-    { id: 3, code: '1003', name: 'محمد رضایی', initials: 'م.ر', position: 'مدیر پروژه', gross: 126884384, deductions: 9800000, net: 117084384 },
-    { id: 4, code: '1004', name: 'نگین تهرانی', initials: 'ن.ت', position: 'حسابدار', gross: 115000000, deductions: 12500000, net: 102500000 },
-]);
+onMounted(async () => {
+    connection = createHubConnection('https://localhost:7198/AccountingHub/PersonnelHub', true);
+
+    connection.on('ReceivePayrollList', (list) => {
+        slipsData.value = list.map(p => ({
+            id: p.id,
+            code: p.personnelCode,
+            name: p.personnelName,
+            dept: 'نامشخص',
+            gross: p.totalAllowances,
+            deductions: p.totalDeductions,
+            net: p.netPay,
+            baseSalary: p.baseSalary,
+            housing: p.housingAllowance,
+            food: p.foodAllowance,
+            child: p.childAllowance,
+            overtime: p.overtimeAmount,
+            otherAllow: p.otherAllowances,
+            insurance: p.insuranceDeduction,
+            tax: p.taxDeduction,
+            otherDed: p.otherDeductions,
+            workDays: p.workDays
+        }));
+        loading.value = false;
+    });
+
+    try {
+        await connection.start();
+        fetchSlips();
+    } catch (err) {
+        console.error('SignalR Error:', err);
+    }
+});
+
+onUnmounted(() => {
+    if (connection) connection.stop();
+});
+
+function fetchSlips() {
+    if (!connection || connection.state !== 'Connected') return;
+    loading.value = true;
+    const yearNum = parseInt(selectedYear.value.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+    connection.invoke('GetPayrollList', yearNum, selectedMonth.value);
+}
+
+watch([selectedYear, selectedMonth], () => {
+    fetchSlips();
+});
 
 const filteredSlips = computed(() => {
     if (!search.value) return slipsData.value;
     return slipsData.value.filter(item =>
         item.name.includes(search.value) ||
-        item.code.includes(search.value) ||
-        item.position.includes(search.value)
+        item.code.includes(search.value)
     );
 });
 
@@ -314,8 +361,6 @@ function openSlip(item) {
 }
 
 function printSlip() {
-    // In a real scenario, this would trigger an actual print
-    // Or use a library like html2pdf
     window.print();
 }
 </script>

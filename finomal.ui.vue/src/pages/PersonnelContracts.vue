@@ -122,7 +122,7 @@
                                             title="تمدید قرارداد"></v-list-item>
                                         <v-divider></v-divider>
                                         <v-list-item link prepend-icon="mdi-delete" base-color="error"
-                                            title="حذف"></v-list-item>
+                                            @click="deleteContractDialog(item)" title="حذف"></v-list-item>
                                     </v-list>
                                 </v-menu>
                             </td>
@@ -138,68 +138,125 @@
                 </div>
             </div>
         </v-card>
+
+        <!-- Delete Dialog -->
+        <v-dialog v-model="deleteDialog.show" max-width="400" persistent>
+            <v-card class="bg-surface-variant">
+                <v-card-text class="pt-6 text-center">
+                    <v-icon size="48" color="error" class="mb-4">mdi-alert-circle-outline</v-icon>
+                    <h3 class="text-h6 mb-2">حذف قرارداد</h3>
+                    <p class="text-body-2 mx-auto" style="max-width: 250px;">
+                        آیا از حذف قرارداد شماره <strong>{{ deleteDialog.item?.contractNumber || deleteDialog.item?.id
+                            }}</strong> برای <strong>{{ deleteDialog.item?.name }}</strong> مطمئن هستید؟
+                    </p>
+                </v-card-text>
+                <div class="d-flex justify-center gap-3 pb-6">
+                    <v-btn variant="text" @click="deleteDialog.show = false">انصراف</v-btn>
+                    <v-btn color="error" @click="doDelete" :loading="deleteDialog.loading">حذف قرارداد</v-btn>
+                </div>
+            </v-card>
+        </v-dialog>
+
+        <v-snackbar v-model="toast.show" :color="toast.color" :timeout="3000" location="top">
+            {{ toast.text }}
+        </v-snackbar>
     </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { createHubConnection } from '@/services/signalr';
 
+let connection = null;
 const search = ref('');
+const deleteDialog = ref({ show: false, item: null, loading: false });
+const toast = ref({ show: false, text: '', color: 'success' });
 
-// Mock Data
+// Mock Data replaced by SignalR
 const stats = ref([
-    { title: 'کل قراردادها', value: '۱۲۸', icon: 'mdi-file-document-multiple', color: 'blue' },
-    { title: 'فعال', value: '۱۱۵', icon: 'mdi-check-circle', color: 'success' },
-    { title: 'در آستانه انقضا', value: '۸', icon: 'mdi-alert-circle', color: 'warning' },
-    { title: 'پایان یافته', value: '۵', icon: 'mdi-close-circle', color: 'error' },
+    { title: 'کل قراردادها', value: '0', icon: 'mdi-file-document-multiple', color: 'blue' },
+    { title: 'فعال', value: '0', icon: 'mdi-check-circle', color: 'success' },
+    { title: 'در آستانه انقضا', value: '0', icon: 'mdi-alert-circle', color: 'warning' },
+    { title: 'پایان یافته', value: '0', icon: 'mdi-close-circle', color: 'error' },
 ]);
 
-const contracts = ref([
-    {
-        id: 'CNT-403-001',
-        name: 'علی احمدی',
-        initials: 'ع.ا',
-        position: 'توسعه‌دهنده فرانت‌اند',
-        type: 'تمام وقت',
-        startDate: '۱۴۰۲/۰۱/۱۵',
-        endDate: '۱۴۰۳/۰۱/۱۵',
-        status: 'فعال',
-        isExpiringSoon: false
-    },
-    {
-        id: 'CNT-403-002',
-        name: 'سارا کریمی',
-        initials: 'س.ک',
-        position: 'طراح رابط کاربری',
-        type: 'پاره وقت',
-        startDate: '۱۴۰۲/۰۶/۰۱',
-        endDate: '۱۴۰۳/۰۶/۰۱',
-        status: 'فعال',
-        isExpiringSoon: false
-    },
-    {
-        id: 'CNT-403-003',
-        name: 'محمد رضایی',
-        initials: 'م.ر',
-        position: 'مدیر پروژه',
-        type: 'پروژه‌ای',
-        startDate: '۱۴۰۲/۱۰/۱۵',
-        endDate: '۱۴۰۳/۰۲/۱۵',
-        status: 'در آستانه انقضا',
-        isExpiringSoon: true
-    },
-    {
-        id: 'CNT-403-004',
-        name: 'نگین تهرانی',
-        initials: 'ن.ت',
-        position: 'حسابدار',
-        type: 'تمام وقت',
-        startDate: '۱۴۰۱/۰۷/۰۱',
-        endDate: '۱۴۰۲/۰۷/۰۱',
-        status: 'پایان یافته',
-        isExpiringSoon: false
-    },
-]);
+const contracts = ref([]);
+
+onMounted(async () => {
+    connection = createHubConnection('https://localhost:7198/AccountingHub/PersonnelHub', true);
+
+    connection.on('ReceiveContractsList', (list) => {
+        contracts.value = list.map(c => ({
+            dbId: c.id,
+            id: c.contractNumber,
+            contractNumber: c.contractNumber,
+            name: c.personnelName,
+            initials: c.personnelInitials,
+            position: c.jobTitle,
+            type: c.title,
+            startDate: c.startDateString,
+            endDate: c.endDateString,
+            status: c.status,
+            isExpiringSoon: c.isExpiringSoon
+        }));
+
+        // Update stats
+        stats.value[0].value = list.length.toString();
+        stats.value[1].value = list.filter(x => x.isActive).length.toString();
+        stats.value[2].value = list.filter(x => x.isExpiringSoon).length.toString();
+        stats.value[3].value = list.filter(x => !x.isActive).length.toString();
+    });
+
+    connection.on('ContractDeleted', (id) => {
+        contracts.value = contracts.value.filter(c => c.dbId !== id);
+        showToast('قرارداد با موفقیت حذف شد', 'success');
+        updateStatsLocally();
+    });
+
+    connection.on('ReceiveError', (err) => {
+        showToast(err, 'error');
+    });
+
+    try {
+        await connection.start();
+        await connection.invoke('GetContractsList');
+    } catch (err) {
+        console.error('SignalR Error:', err);
+        showToast('خطا در ارتباط با سرور', 'error');
+    }
+});
+
+onUnmounted(() => {
+    if (connection) connection.stop();
+});
+
+const updateStatsLocally = () => {
+    stats.value[0].value = contracts.value.length.toString();
+    stats.value[1].value = contracts.value.filter(x => x.status === 'فعال').length.toString();
+    stats.value[2].value = contracts.value.filter(x => x.isExpiringSoon).length.toString();
+    stats.value[3].value = contracts.value.filter(x => x.status === 'پایان یافته').length.toString();
+};
+
+const showToast = (text, color = 'success') => {
+    toast.value = { show: true, text, color };
+};
+
+const deleteContractDialog = (item) => {
+    deleteDialog.value = { show: true, item, loading: false };
+};
+
+const doDelete = async () => {
+    if (!connection) return;
+    deleteDialog.value.loading = true;
+    try {
+        await connection.invoke('DeleteContract', deleteDialog.value.item.dbId);
+        deleteDialog.value.show = false;
+    } catch (e) {
+        showToast('خطا در ارسال درخواست حذف', 'error');
+    } finally {
+        deleteDialog.value.loading = false;
+    }
+};
 
 const filteredContracts = computed(() => {
     if (!search.value) return contracts.value;

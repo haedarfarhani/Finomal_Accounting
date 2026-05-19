@@ -513,7 +513,12 @@
 </template>
 
 <script setup>
-import { ref, computed, h, resolveComponent } from 'vue'
+import { ref, computed, h, resolveComponent, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { createHubConnection } from '@/services/signalr'
+
+const router = useRouter()
+let connection = null;
 
 // ── Sub-components ────────────────────────────────────────────────────────
 
@@ -721,6 +726,36 @@ function showToast(text, type = 'success') {
   toastTimer = setTimeout(() => { toast.value.show = false }, 3500)
 }
 
+onMounted(async () => {
+  connection = createHubConnection('https://localhost:7198/AccountingHub/PersonnelHub', true);
+
+  connection.on('ReceiveError', (err) => {
+    showToast(err, 'error');
+    submitting.value = false;
+  });
+
+  connection.on('PersonnelAdded', () => {
+    submitting.value = false;
+    showToast('پرسنل با موفقیت ثبت شد ✓', 'success');
+    setTimeout(() => {
+      router.push('/personnel');
+    }, 1500);
+  });
+
+  try {
+    await connection.start();
+  } catch (err) {
+    console.error('SignalR Setup Error: ', err);
+    showToast('خطا در ارتباط با سرور', 'error');
+  }
+});
+
+onUnmounted(() => {
+  if (connection) {
+    connection.stop();
+  }
+});
+
 // ── Navigation ─────────────────────────────────────────────────────────────
 const required = {
   1: ['firstName', 'lastName', 'fatherName', 'nationalId', 'idNumber', 'mobile'],
@@ -760,10 +795,40 @@ function goToStep(n) {
 function saveDraft() { showToast('پیش‌نویس ذخیره شد', 'success') }
 
 async function submitForm() {
+  if (!connection || connection.state !== 'Connected') {
+    showToast('عدم ارتباط با سرور. لطفا مجدد تلاش کنید', 'error')
+    return;
+  }
+
   submitting.value = true
-  await new Promise(r => setTimeout(r, 1800))
-  submitting.value = false
-  showToast('پرسنل با موفقیت ثبت شد ✓', 'success')
+
+  const numericValue = (str) => {
+    if (!str) return 0;
+    // Remove all non-digits except standard 0-9 and Persian digits
+    let cleaned = String(str).replace(/[^۰-۹0-9]/g, '');
+    let num = parseInt(cleaned.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+    return isNaN(num) ? 0 : num;
+  };
+
+  const payload = {
+    ...form.value,
+    baseSalary: numericValue(form.value.baseSalary),
+    housingAllowance: numericValue(form.value.housingAllowance),
+    foodAllowance: numericValue(form.value.foodAllowance),
+    childAllowance: numericValue(form.value.childAllowance),
+    overtimeFixed: numericValue(form.value.overtimeFixed),
+    otherAllowance: numericValue(form.value.otherAllowance),
+    employeeInsurancePct: form.value.employeeInsurancePct?.toString() || '',
+    employerInsurancePct: form.value.employerInsurancePct?.toString() || ''
+  };
+
+  try {
+    await connection.invoke('CreatePersonnel', payload);
+  } catch (error) {
+    console.error(error);
+    showToast('خطا در ارسال اطلاعات سیستم', 'error');
+    submitting.value = false;
+  }
 }
 </script>
 

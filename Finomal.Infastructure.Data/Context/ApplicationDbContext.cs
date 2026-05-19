@@ -1,4 +1,5 @@
 ﻿using Finomal.Domain.Accounting;
+using Finomal.Domain.Personnel;
 using Finomal.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -23,6 +24,10 @@ namespace Finomal.Infrastructure.Data.Context
         public DbSet<UserRole> UserRoles { get; set; } = null!;
         public DbSet<LoginHistory> LoginHistories { get; set; } = null!;
         public DbSet<AccountingDocument> AccountingDocuments { get; set; } = null!;
+        public DbSet<Personnel> Personnel { get; set; } = null!;
+        public DbSet<PersonnelContract> PersonnelContracts { get; set; } = null!;
+        public DbSet<AttendanceRecord> AttendanceRecords { get; set; } = null!;
+        public DbSet<PayrollRecord> PayrollRecords { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -34,6 +39,11 @@ namespace Finomal.Infrastructure.Data.Context
             modelBuilder.Entity<UserRole>().ToTable("UserRoles");
             modelBuilder.Entity<LoginHistory>().ToTable("LoginHistories");
             modelBuilder.Entity<AccountingDocument>().ToTable("AccountingDocuments");
+
+            modelBuilder.Entity<Personnel>().ToTable("Personnel");
+            modelBuilder.Entity<PersonnelContract>().ToTable("PersonnelContracts");
+            modelBuilder.Entity<AttendanceRecord>().ToTable("AttendanceRecords");
+            modelBuilder.Entity<PayrollRecord>().ToTable("PayrollRecords");
 
             // User configuration
             modelBuilder.Entity<User>(entity =>

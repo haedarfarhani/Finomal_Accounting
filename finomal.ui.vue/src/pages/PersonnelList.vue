@@ -226,7 +226,7 @@
         <transition name="toast-anim">
             <div v-if="toast.show" class="toast" :class="`toast-${toast.type}`">
                 <v-icon size="16" class="ml-2">{{ toast.type === 'success' ? 'mdi-check-circle' : 'mdi-alert-circle'
-                    }}</v-icon>
+                }}</v-icon>
                 {{ toast.text }}
             </div>
         </transition>
@@ -235,10 +235,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { createHubConnection } from '@/services/signalr'
 
 const router = useRouter()
+let connection = null;
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
@@ -260,23 +262,60 @@ function avatarColor(name) {
     return AVATAR_COLORS[idx]
 }
 
-// ── Sample Data ───────────────────────────────────────────────────────────
-const allPersonnel = ref([
-    { id: 1, name: 'علی محمدی', nationalId: '0012345678', code: 'P-0001', dept: 'مالی و حسابداری', jobTitle: 'حسابدار ارشد', hireDate: '۱۳۹۸/۰۱/۱۵', salary: '۲۸,۰۰۰,۰۰۰', status: 'active' },
-    { id: 2, name: 'فاطمه رضایی', nationalId: '0023456789', code: 'P-0002', dept: 'اداری و منابع انسانی', jobTitle: 'کارشناس منابع انسانی', hireDate: '۱۳۹۹/۰۳/۲۰', salary: '۲۲,۰۰۰,۰۰۰', status: 'active' },
-    { id: 3, name: 'محمد کریمی', nationalId: '0034567890', code: 'P-0003', dept: 'فناوری اطلاعات', jobTitle: 'توسعه‌دهنده ارشد', hireDate: '۱۳۹۷/۰۶/۰۱', salary: '۳۵,۰۰۰,۰۰۰', status: 'active' },
-    { id: 4, name: 'زهرا احمدی', nationalId: '0045678901', code: 'P-0004', dept: 'فروش و بازاریابی', jobTitle: 'مدیر فروش', hireDate: '۱۴۰۰/۰۲/۱۰', salary: '۳۲,۰۰۰,۰۰۰', status: 'active' },
-    { id: 5, name: 'حسن موسوی', nationalId: '0056789012', code: 'P-0005', dept: 'تولید و عملیات', jobTitle: 'سرپرست تولید', hireDate: '۱۳۹۶/۰۸/۰۵', salary: '۲۵,۰۰۰,۰۰۰', status: 'active' },
-    { id: 6, name: 'مریم صادقی', nationalId: '0067890123', code: 'P-0006', dept: 'مالی و حسابداری', jobTitle: 'حسابرس داخلی', hireDate: '۱۴۰۱/۰۱/۰۱', salary: '۲۶,۰۰۰,۰۰۰', status: 'active' },
-    { id: 7, name: 'رضا جعفری', nationalId: '0078901234', code: 'P-0007', dept: 'انبار و لجستیک', jobTitle: 'مدیر انبار', hireDate: '۱۳۹۸/۱۱/۱۵', salary: '۲۰,۰۰۰,۰۰۰', status: 'inactive' },
-    { id: 8, name: 'نرگس حسینی', nationalId: '0089012345', code: 'P-0008', dept: 'اداری و منابع انسانی', jobTitle: 'منشی اداری', hireDate: '۱۴۰۰/۰۵/۱۱', salary: '۱۸,۰۰۰,۰۰۰', status: 'active' },
-    { id: 9, name: 'امیر تهرانی', nationalId: '0090123456', code: 'P-0009', dept: 'فناوری اطلاعات', jobTitle: 'مدیر محصول', hireDate: '۱۳۹۹/۰۷/۲۲', salary: '۳۸,۰۰۰,۰۰۰', status: 'active' },
-    { id: 10, name: 'سارا نجفی', nationalId: '0001234567', code: 'P-0010', dept: 'فروش و بازاریابی', jobTitle: 'کارشناس بازاریابی', hireDate: '۱۴۰۱/۰۳/۰۸', salary: '۲۱,۰۰۰,۰۰۰', status: 'active' },
-    { id: 11, name: 'داود قاسمی', nationalId: '0113456780', code: 'P-0011', dept: 'تولید و عملیات', jobTitle: 'اپراتور ماشین‌آلات', hireDate: '۱۳۹۷/۰۹/۱۴', salary: '۱۹,۰۰۰,۰۰۰', status: 'inactive' },
-    { id: 12, name: 'لیلا عباسی', nationalId: '0124567891', code: 'P-0012', dept: 'مالی و حسابداری', jobTitle: 'مدیر مالی', hireDate: '۱۳۹۵/۰۴/۰۱', salary: '۴۵,۰۰۰,۰۰۰', status: 'active' },
-])
+const allPersonnel = ref([])
 
 const departments = ['اداری و منابع انسانی', 'مالی و حسابداری', 'فروش و بازاریابی', 'تولید و عملیات', 'فناوری اطلاعات', 'انبار و لجستیک']
+
+onMounted(async () => {
+    connection = createHubConnection('https://localhost:7198/AccountingHub/PersonnelHub', true); // Ensure correct API URL port, usually from env but user standard is fine
+
+    connection.on('ReceivePersonnelList', (list) => {
+        allPersonnel.value = list.map(p => ({
+            id: p.id,
+            name: p.fullName || `${p.firstName} ${p.lastName}`,
+            firstName: p.firstName,
+            lastName: p.lastName,
+            nationalId: p.nationalCode,
+            code: p.personnelCode,
+            dept: p.department,
+            jobTitle: p.jobTitle,
+            hireDate: p.hireDate ? new Date(p.hireDate).toLocaleDateString('fa-IR') : '-',
+            salary: p.baseSalary.toLocaleString(),
+            status: p.status
+        }));
+    });
+
+    connection.on('PersonnelAdded', (p) => {
+        connection.invoke('GetPersonnelList');
+    });
+
+    connection.on('PersonnelStatusUpdated', ({ id, status }) => {
+        const index = allPersonnel.value.findIndex(x => x.id === id);
+        if (index !== -1) allPersonnel.value[index].status = status;
+    });
+
+    connection.on('PersonnelDeleted', (id) => {
+        allPersonnel.value = allPersonnel.value.filter(x => x.id !== id);
+    });
+
+    connection.on('ReceiveError', (err) => {
+        showToast(err, 'error');
+    });
+
+    try {
+        await connection.start();
+        await connection.invoke('GetPersonnelList');
+    } catch (err) {
+        console.error('SignalR Setup Error: ', err);
+        showToast('خطا در ارتباط با سرور', 'error');
+    }
+});
+
+onUnmounted(() => {
+    if (connection) {
+        connection.stop();
+    }
+});
 
 // ── State ────────────────────────────────────────────────────────────────
 const search = ref('')
@@ -368,11 +407,18 @@ function confirmDelete(p) {
     deleteDialog.value = { show: true, person: p }
 }
 
-function doDelete() {
+async function doDelete() {
     const p = deleteDialog.value.person
-    allPersonnel.value = allPersonnel.value.filter(x => x.id !== p.id)
-    deleteDialog.value.show = false
-    showToast(`پرسنل ${p.name} حذف شد`, 'error')
+    if (connection) {
+        try {
+            await connection.invoke('DeletePersonnel', p.id);
+            deleteDialog.value.show = false;
+            showToast(`پرسنل ${p.name} حذف شد`, 'success');
+        } catch (e) {
+            console.error(e);
+            showToast('خطا در حذف', 'error');
+        }
+    }
 }
 
 function exportExcel() {

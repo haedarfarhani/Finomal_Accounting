@@ -39,6 +39,7 @@ app.UseCors("VueDevPolicy");
 app.MapControllers();
 app.MapHub<AccountingAuthUserHub>("/AccountingHub/AuthUser");
 app.MapHub<UserManagementHub>("AccountingHub/UserManagement");
+app.MapHub<PersonnelHub>("/AccountingHub/PersonnelHub");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

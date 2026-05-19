@@ -15,8 +15,9 @@
                 <div class="period-selectors">
                     <v-select v-model="selectedYear" :items="years" variant="solo-filled" density="comfortable"
                         hide-details bg-color="rgba(30, 41, 59, 0.4)" class="period-select" rounded="lg"></v-select>
-                    <v-select v-model="selectedMonth" :items="months" variant="solo-filled" density="comfortable"
-                        hide-details bg-color="rgba(30, 41, 59, 0.4)" class="period-select" rounded="lg"></v-select>
+                    <v-select v-model="selectedMonth" :items="monthItems" item-title="title" item-value="value"
+                        variant="solo-filled" density="comfortable" hide-details bg-color="rgba(30, 41, 59, 0.4)"
+                        class="period-select" rounded="lg"></v-select>
                 </div>
 
                 <v-btn color="primary" prepend-icon="mdi-calculator" elevation="2" class="calculate-btn" rounded="lg"
@@ -157,14 +158,14 @@
                     <!-- Employee Base Info -->
                     <div class="emp-header-info">
                         <div class="info-cell"><span class="label">نام و نام خانوادگی:</span> <span class="val">{{
-                                selectedEmployee.name }}</span></div>
+                            selectedEmployee.name }}</span></div>
                         <div class="info-cell"><span class="label">کد پرسنلی:</span> <span class="val">{{
-                                selectedEmployee.code
-                                }}</span></div>
+                            selectedEmployee.code
+                        }}</span></div>
                         <div class="info-cell"><span class="label">شماره حساب:</span> <span
                                 class="val">۶۱۰۴۳۳۷۱...</span></div>
                         <div class="info-cell"><span class="label">کارکرد (روز):</span> <span class="val">{{
-                                selectedEmployee.workDays }}</span></div>
+                            selectedEmployee.workDays }}</span></div>
                     </div>
 
                     <v-row>
@@ -177,23 +178,31 @@
                                 </div>
                                 <div class="panel-list">
                                     <div class="list-item"><span>حقوق پایه</span> <span>{{
-                                            formatCurrency(selectedEmployee.baseSalary) }}</span></div>
-                                    <div class="list-item"><span>حق مسکن</span> <span>{{ formatCurrency(9000000)
+                                        formatCurrency(selectedEmployee.baseSalary) }}</span></div>
+                                    <div class="list-item"><span>حق مسکن</span> <span>{{
+                                        formatCurrency(selectedEmployee.housing)
                                             }}</span></div>
-                                    <div class="list-item"><span>بن خواروبار</span> <span>{{ formatCurrency(11000000)
+                                    <div class="list-item"><span>بن خواروبار</span> <span>{{
+                                        formatCurrency(selectedEmployee.food)
                                             }}</span>
                                     </div>
-                                    <div class="list-item"><span>حق اولاد</span> <span>{{ formatCurrency(5308284)
+                                    <div class="list-item"><span>حق اولاد</span> <span>{{
+                                        formatCurrency(selectedEmployee.child)
                                             }}</span>
                                     </div>
-                                    <div class="list-item"><span>اضافه کاری</span> <span>{{ formatCurrency(12000000)
+                                    <div class="list-item"><span>اضافه کاری</span> <span>{{
+                                        formatCurrency(selectedEmployee.overtime)
+                                            }}</span>
+                                    </div>
+                                    <div class="list-item"><span>سایر مزایا</span> <span>{{
+                                        formatCurrency(selectedEmployee.otherAllow)
                                             }}</span>
                                     </div>
                                 </div>
                                 <div class="panel-total text-success">
                                     <span>جمع مزایا</span>
                                     <span class="font-weight-bold">{{ formatCurrency(selectedEmployee.totalAllowances)
-                                        }}</span>
+                                    }}</span>
                                 </div>
                             </div>
                         </v-col>
@@ -207,21 +216,19 @@
                                 </div>
                                 <div class="panel-list">
                                     <div class="list-item"><span>بیمه تامین اجتماعی (۷٪)</span> <span>{{
-                                            formatCurrency(6040520)
+                                        formatCurrency(selectedEmployee.insurance)
+                                    }}</span></div>
+                                    <div class="list-item"><span>مالیات بر درآمد</span> <span>{{
+                                        formatCurrency(selectedEmployee.tax)
                                             }}</span></div>
-                                    <div class="list-item"><span>مالیات بر درآمد</span> <span>{{ formatCurrency(2500000)
+                                    <div class="list-item"><span>سایر کسورات</span> <span>{{
+                                        formatCurrency(selectedEmployee.otherDed)
                                             }}</span></div>
-                                    <div class="list-item"><span>مساعده</span> <span>{{ formatCurrency(0) }}</span>
-                                    </div>
-                                    <div class="list-item"><span>جریمه / غیبت</span> <span>{{ formatCurrency(0)
-                                            }}</span></div>
-                                    <!-- Filler for height balance -->
-                                    <div class="list-item filler"></div>
                                 </div>
                                 <div class="panel-total text-error">
                                     <span>جمع کسورات</span>
                                     <span class="font-weight-bold">{{ formatCurrency(selectedEmployee.totalDeductions)
-                                        }}</span>
+                                    }}</span>
                                 </div>
                             </div>
                         </v-col>
@@ -241,29 +248,97 @@
                 </div>
             </v-card>
         </v-dialog>
+
+        <v-snackbar v-model="toast.show" :color="toast.color" :timeout="3000" location="top">
+            {{ toast.text }}
+        </v-snackbar>
     </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { createHubConnection } from '@/services/signalr';
 
 const years = ['۱۴۰۲', '۱۴۰۳', '۱۴۰۴'];
-const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+const monthItems = [
+    { title: 'فروردین', value: 1 }, { title: 'اردیبهشت', value: 2 }, { title: 'خرداد', value: 3 },
+    { title: 'تیر', value: 4 }, { title: 'مرداد', value: 5 }, { title: 'شهریور', value: 6 },
+    { title: 'مهر', value: 7 }, { title: 'آبان', value: 8 }, { title: 'آذر', value: 9 },
+    { title: 'دی', value: 10 }, { title: 'بهمن', value: 11 }, { title: 'اسفند', value: 12 }
+];
 
 const selectedYear = ref('۱۴۰۳');
-const selectedMonth = ref('بهمن');
+const selectedMonth = ref(11); // Bahman
 const search = ref('');
 const isCalculating = ref(false);
 const slipDialog = ref(false);
 const selectedEmployee = ref(null);
+const payrollData = ref([]);
+const toast = ref({ show: false, text: '', color: 'success' });
+let connection = null;
 
-const payrollData = ref([
-    { id: 1, code: '1001', name: 'علی احمدی', workDays: 30, baseSalary: 71661840, totalAllowances: 108970124, totalDeductions: 8540520, netPay: 100429604, status: 'محاسبه شده' },
-    { id: 2, code: '1002', name: 'سارا کریمی', workDays: 30, baseSalary: 71661840, totalAllowances: 91661840, totalDeductions: 6040520, netPay: 85621320, status: 'محاسبه شده' },
-    { id: 3, code: '1003', name: 'محمد رضایی', workDays: 28, baseSalary: 66884384, totalAllowances: 86884384, totalDeductions: 5800000, netPay: 81084384, status: 'محاسبه شده' },
-    { id: 4, code: '1004', name: 'نگین تهرانی', workDays: 30, baseSalary: 95000000, totalAllowances: 125000000, totalDeductions: 12500000, netPay: 112500000, status: 'تایید نهایی' },
-    { id: 5, code: '1005', name: 'حسین جعفری', workDays: 15, baseSalary: 35830920, totalAllowances: 45830920, totalDeductions: 3020260, netPay: 42810660, status: 'خام' },
-]);
+onMounted(async () => {
+    connection = createHubConnection('https://localhost:7198/AccountingHub/PersonnelHub', true);
+
+    connection.on('ReceivePayrollList', (list) => {
+        payrollData.value = list.map(p => ({
+            id: p.id,
+            code: p.personnelCode,
+            name: p.personnelName,
+            workDays: p.workDays,
+            baseSalary: p.baseSalary,
+            totalAllowances: p.totalAllowances,
+            totalDeductions: p.totalDeductions,
+            netPay: p.netPay,
+            status: p.status,
+            // Full details for slip
+            housing: p.housingAllowance,
+            food: p.foodAllowance,
+            child: p.childAllowance,
+            overtime: p.overtimeAmount,
+            otherAllow: p.otherAllowances,
+            insurance: p.insuranceDeduction,
+            tax: p.taxDeduction,
+            otherDed: p.otherDeductions
+        }));
+    });
+
+    connection.on('PayrollCalculated', () => {
+        isCalculating.value = false;
+        showToast('محاسبه حقوق با موفقیت انجام شد ✓', 'success');
+    });
+
+    connection.on('ReceiveError', (err) => {
+        showToast(err, 'error');
+        isCalculating.value = false;
+    });
+
+    try {
+        await connection.start();
+        fetchPayroll();
+    } catch (err) {
+        console.error('SignalR Error:', err);
+        showToast('خطا در ارتباط با سرور', 'error');
+    }
+});
+
+onUnmounted(() => {
+    if (connection) connection.stop();
+});
+
+function fetchPayroll() {
+    if (!connection || connection.state !== 'Connected') return;
+    const yearNum = parseInt(selectedYear.value.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+    connection.invoke('GetPayrollList', yearNum, selectedMonth.value);
+}
+
+watch([selectedYear, selectedMonth], () => {
+    fetchPayroll();
+});
+
+function showToast(text, color = 'success') {
+    toast.value = { show: true, text, color };
+}
 
 // Summaries based on data
 const summaryStats = computed(() => {
@@ -289,12 +364,10 @@ function formatCurrency(val) {
 }
 
 function calculatePayroll() {
+    if (!connection || connection.state !== 'Connected') return;
     isCalculating.value = true;
-    // Simulate delay
-    setTimeout(() => {
-        isCalculating.value = false;
-        // In real scenario we would refresh data here
-    }, 1000);
+    const yearNum = parseInt(selectedYear.value.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+    connection.invoke('CalculatePayroll', yearNum, selectedMonth.value);
 }
 
 function openSlipDialog(emp) {

@@ -215,7 +215,7 @@
         <transition name="toast-anim">
             <div v-if="toast.show" class="toast" :class="`toast-${toast.type}`">
                 <v-icon size="16" class="ml-2">{{ toast.type === 'success' ? 'mdi-check-circle' : 'mdi-alert-circle'
-                    }}</v-icon>
+                }}</v-icon>
                 {{ toast.text }}
             </div>
         </transition>
@@ -224,11 +224,15 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { createHubConnection } from '@/services/signalr'
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 const PD = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
 function toPersian(n) { return String(n).split('').map(c => PD[+c] ?? c).join('') }
+
+let connection = null;
+const saving = ref(false);
 
 const COLORS = [
     'linear-gradient(135deg,#63b3ed,#4299e1)',
@@ -246,14 +250,74 @@ const MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', '�
 const DAY_NAMES_SHORT = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج']  // شنبه=0 ... جمعه=6
 
 const currentYear = ref(1403)
-const currentMonth = ref(11) // 1-based (اسفند = 12)
+const currentMonth = ref(12) // Default to Esfand for demo as in original mock
+const loading = ref(false)
+
+const attendance = ref({}) // pid_day: status
+const personnel = ref([])
+
+onMounted(async () => {
+    connection = createHubConnection('https://localhost:7198/AccountingHub/PersonnelHub', true);
+
+    connection.on('ReceivePersonnelList', (list) => {
+        personnel.value = list.map(p => ({
+            id: p.id,
+            name: `${p.firstName} ${p.lastName}`,
+            code: p.personnelCode || 'P-0000',
+            dept: p.department || 'نامشخص'
+        }));
+    });
+
+    connection.on('ReceiveAttendance', (list) => {
+        // Reset attendance first
+        attendance.value = {};
+        list.forEach(r => {
+            attendance.value[`${r.personnelId}_${r.day}`] = r.status;
+        });
+        loading.value = false;
+    });
+
+    connection.on('AttendanceSaved', () => {
+        saving.value = false;
+        showToast('اطلاعات کارکرد با موفقیت ذخیره شد ✓', 'success');
+    });
+
+    connection.on('ReceiveError', (err) => {
+        showToast(err, 'error');
+        loading.value = false;
+        saving.value = false;
+    });
+
+    try {
+        await connection.start();
+        // Initial load
+        await connection.invoke('GetPersonnelList');
+        fetchAttendance();
+    } catch (err) {
+        console.error('SignalR Error:', err);
+        showToast('خطا در ارتباط با سرور', 'error');
+    }
+});
+
+onUnmounted(() => {
+    if (connection) connection.stop();
+});
+
+async function fetchAttendance() {
+    if (!connection || connection.state !== 'Connected') return;
+    loading.value = true;
+    await connection.invoke('GetMonthlyAttendance', currentYear.value, currentMonth.value);
+}
+
+watch([currentMonth, currentYear], () => {
+    fetchAttendance();
+});
 
 function daysInMonth(m) { return m <= 6 ? 31 : m <= 11 ? 30 : 29 }
 
 const workingDays = computed(() => {
     const total = daysInMonth(currentMonth.value)
     // month 1 day 1 offset — شنبه=0, جمعه=6
-    // simplified: start offset for 1403/01/01 = 5 (پنجشنبه)
     const startOffset = ((currentMonth.value - 1) * 2 + 5) % 7
     return Array.from({ length: total }, (_, i) => {
         const dayOfWeek = (startOffset + i) % 7  // 0=شنبه…6=جمعه
@@ -269,36 +333,16 @@ const currentMonthLabel = computed(() =>
     `${MONTHS[currentMonth.value - 1]} ${toPersian(currentYear.value)}`
 )
 
-const isCurrentMonth = computed(() => false) // demo: allow forward navigation
+const isCurrentMonth = computed(() => false)
 
 function prevMonth() {
     if (currentMonth.value === 1) { currentMonth.value = 12; currentYear.value-- }
     else currentMonth.value--
-    resetAttendance()
 }
 function nextMonth() {
     if (currentMonth.value === 12) { currentMonth.value = 1; currentYear.value++ }
     else currentMonth.value++
-    resetAttendance()
 }
-
-// ── Personnel ─────────────────────────────────────────────────────────────
-const personnel = ref([
-    { id: 1, name: 'علی محمدی', code: 'P-0001', dept: 'مالی و حسابداری' },
-    { id: 2, name: 'فاطمه رضایی', code: 'P-0002', dept: 'اداری و منابع انسانی' },
-    { id: 3, name: 'محمد کریمی', code: 'P-0003', dept: 'فناوری اطلاعات' },
-    { id: 4, name: 'زهرا احمدی', code: 'P-0004', dept: 'فروش و بازاریابی' },
-    { id: 5, name: 'حسن موسوی', code: 'P-0005', dept: 'تولید و عملیات' },
-    { id: 6, name: 'مریم صادقی', code: 'P-0006', dept: 'مالی و حسابداری' },
-    { id: 7, name: 'رضا جعفری', code: 'P-0007', dept: 'انبار و لجستیک' },
-    { id: 8, name: 'نرگس حسینی', code: 'P-0008', dept: 'اداری و منابع انسانی' },
-])
-
-// status: 'work' | 'absent' | 'leave' | 'overtime'
-// key: `${pid}_${day}`
-const attendance = ref({})
-
-function resetAttendance() { attendance.value = {} }
 
 function getStatus(pid, day) { return attendance.value[`${pid}_${day}`] || 'work' }
 
@@ -393,7 +437,34 @@ const legend = [
 ]
 
 // ── Actions ───────────────────────────────────────────────────────────────
-function saveAll() { showToast('کارکرد ماه ذخیره شد ✓', 'success') }
+async function saveAll() {
+    if (!connection || connection.state !== 'Connected') return;
+    saving.value = true;
+
+    // Prepare records - only send what's actually changed or everything for simplified logic
+    const records = [];
+    for (const key in attendance.value) {
+        const [pid, day] = key.split('_');
+        records.push({
+            personnelId: pid,
+            day: parseInt(day),
+            status: attendance.value[key]
+        });
+    }
+
+    const payload = {
+        year: currentYear.value,
+        month: currentMonth.value,
+        records: records
+    };
+
+    try {
+        await connection.invoke('SaveAttendance', payload);
+    } catch (e) {
+        showToast('خطا در ذخیره سیستم', 'error');
+        saving.value = false;
+    }
+}
 function exportExcel() { showToast('خروجی اکسل آماده دانلود است', 'success') }
 
 let toastTimer
