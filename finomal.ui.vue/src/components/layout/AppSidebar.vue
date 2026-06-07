@@ -131,15 +131,47 @@ const menuList = ref([
     title: 'حسابداری', icon: 'mdi-book-open-variant-outline', color: 'blue', glow: '56,189,248',
     separator: 'عملیات مالی',
     subMenus: [
-      { title: 'صدور سند حسابداری', path: '/accounting-document/create' },
-      { title: 'لیست اسناد', path: '/accounting-document/list' },
-      { title: 'مرور حساب‌ها' },
-      { title: 'دفتر روزنامه' },
-      { title: 'دفتر کل' },
-      { title: 'تراز آزمایشی' },
-      { title: 'تعریف سرفصل‌ها', path: '/chart-of-accounts' },
-      { title: 'سال مالی', path: '/fiscal-year' },
-      { title: 'عملیات پایان سال' },
+      // عملیات روزانه
+      { title: 'صدور سند', path: '/accounting/create' },
+      { title: 'لیست اسناد', path: '/accounting/list' },
+
+      // حساب‌ها
+      { title: 'مرور حساب‌ها', path: '/accounting/review' },
+      { title: 'گردش حساب‌ها', path: '/accounting/transactions' },
+
+      // دفاتر قانونی
+      { title: 'دفتر روزنامه', path: '/accounting/general-journal' },
+      { title: 'دفتر کل', path: '/accounting/general-ledger' },
+      { title: 'دفتر معین', path: '/accounting/subsidiary-ledger' },
+
+      // ترازها و گزارشات
+      { title: 'تراز آزمایشی', path: '/accounting/trial-balance' },
+      { title: 'تراز تفصیلی', path: '/accounting/detailed-trial-balance' },
+
+      // صورت‌های مالی
+      { title: 'صورت سود و زیان', path: '/accounting/profit-loss' },
+      { title: 'ترازنامه', path: '/accounting/balance-sheet' },
+      { title: 'صورت جریان وجوه نقد', path: '/accounting/cash-flow' },
+
+      // مدیریت حساب‌ها
+      { title: 'تعریف سرفصل‌ها', path: '/accounting/chart-of-accounts' },
+      { title: 'تعریف حساب تفصیلی', path: '/accounting/subsidiary-accounts' },
+      { title: 'مرکز هزینه', path: '/accounting/cost-centers' },
+      { title: 'پروژه‌ها', path: '/accounting/projects' },
+
+      // عملیات دوره مالی
+      { title: 'سال مالی', path: '/accounting/fiscal-year' },
+      { title: 'افتتاحیه حساب‌ها', path: '/accounting/opening-balance' },
+      { title: 'بستن حساب‌ها', path: '/accounting/closing-entries' },
+      { title: 'عملیات پایان سال', path: '/accounting/year-end-operations' },
+
+      // ابزارها
+      { title: 'اسناد موقت', path: '/accounting/temporary-documents' },
+      { title: 'اسناد خودکار', path: '/accounting/auto-documents' },
+      { title: 'بایگانی اسناد', path: '/accounting/document-archive' },
+
+      // تنظیمات
+      { title: 'تنظیمات حسابداری', path: '/accounting/accounting-settings' },
     ],
   },
   {
@@ -183,6 +215,16 @@ const menuList = ref([
       { title: 'انتقال بین انبارها', path: '/inventory/transfers' },
       { title: 'کاردکس کالا', path: '/inventory/kardex' },
       { title: 'موجودی انبار', path: '/inventory/stock' },
+    ],
+  },
+  {
+    title: 'بهایابی', icon: 'mdi-calculator-variant-outline', color: 'indigo', glow: '99,102,241',
+    separator: 'تولید و هزینه',
+    subMenus: [
+      { title: 'مراکز هزینه', path: '/costing/cost-centers' },
+      { title: 'عوامل هزینه', path: '/costing/cost-factors' },
+      { title: 'تسهیم هزینه‌ها', path: '/costing/allocations' },
+      { title: 'محاسبه بهای تمام شده', path: '/costing/calculate' },
     ],
   },
   {
@@ -456,6 +498,10 @@ watch(() => route.path, (currentPath) => {
 
 .sb-color-slate {
   color: #94a3b8 !important;
+}
+
+.sb-color-indigo {
+  color: #6366f1 !important;
 }
 
 /* Item title */

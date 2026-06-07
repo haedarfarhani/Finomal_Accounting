@@ -1,48 +1,48 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { routes } from "vue-router/auto-routes";
 
-import LoginPage from "../pages/LoginPage.vue";
-import RegisterPage from "../pages/RegisterPage.vue";
-import UserManagment from "../pages/UserManagment.vue";
-import CreatePersonnel from "../pages/CreatePersonnel.vue";
-import PersonnelList from "../pages/PersonnelList.vue";
-import MonthlyAttendance from "../pages/MonthlyAttendance.vue";
-import HomePage from "../pages/HomePage.vue";
+import LoginPage from "../pages/auth/LoginPage.vue";
+import RegisterPage from "../pages/auth/RegisterPage.vue";
+import UserManagment from "../pages/settings/UserManagment.vue";
+import CreatePersonnel from "../pages/hr/CreatePersonnel.vue";
+import PersonnelList from "../pages/hr/PersonnelList.vue";
+import MonthlyAttendance from "../pages/hr/MonthlyAttendance.vue";
+import HomePage from "../pages/home/HomePage.vue";
 import MainLayout from "../layouts/MainLayout.vue";
-import AccountingDocumentCreate from "../pages/AccountingDocumentCreate.vue";
-import PersonnelContracts from "../pages/PersonnelContracts.vue";
-import PayrollCalculation from "../pages/PayrollCalculation.vue";
-import PaySlip from "../pages/PaySlip.vue";
-import IncomeStatement from "../pages/IncomeStatement.vue";
-import BalanceSheet from "../pages/BalanceSheet.vue";
-import CashFlow from "../pages/CashFlow.vue";
-import TaxpayersReport from "../pages/TaxpayersReport.vue";
-import WarehouseDefinition from "../pages/WarehouseDefinition.vue";
-import ProductDefinition from "../pages/ProductDefinition.vue";
-import WarehouseReceipt from "../pages/WarehouseReceipt.vue";
-import WarehouseIssue from "../pages/WarehouseIssue.vue";
-import WarehouseTransfer from "../pages/WarehouseTransfer.vue";
-import ItemKardex from "../pages/ItemKardex.vue";
-import WarehouseInventory from "../pages/WarehouseInventory.vue";
+import AccountingDocumentCreate from "../pages/accounting/AccountingDocumentCreate.vue";
+import PersonnelContracts from "../pages/hr/PersonnelContracts.vue";
+import PayrollCalculation from "../pages/hr/PayrollCalculation.vue";
+import PaySlip from "../pages/hr/PaySlip.vue";
+import IncomeStatement from "../pages/reports/IncomeStatement.vue";
+import BalanceSheet from "../pages/reports/BalanceSheet.vue";
+import CashFlow from "../pages/treasury/CashFlow.vue";
+import TaxpayersReport from "../pages/reports/TaxpayersReport.vue";
+import WarehouseDefinition from "../pages/inventory/WarehouseDefinition.vue";
+import ProductDefinition from "../pages/inventory/ProductDefinition.vue";
+import WarehouseReceipt from "../pages/inventory/WarehouseReceipt.vue";
+import WarehouseIssue from "../pages/inventory/WarehouseIssue.vue";
+import WarehouseTransfer from "../pages/inventory/WarehouseTransfer.vue";
+import ItemKardex from "../pages/inventory/ItemKardex.vue";
+import WarehouseInventory from "../pages/inventory/WarehouseInventory.vue";
 
-import CustomersDefinition from "../pages/CustomersDefinition.vue";
-import ProformaInvoice from "../pages/ProformaInvoice.vue";
-import SalesInvoice from "../pages/SalesInvoice.vue";
-import SalesReturn from "../pages/SalesReturn.vue";
-import SalesReports from "../pages/SalesReports.vue";
-import SuppliersDefinition from "../pages/SuppliersDefinition.vue";
-import PurchaseOrder from "../pages/PurchaseOrder.vue";
-import PurchaseInvoice from "../pages/PurchaseInvoice.vue";
-import PurchaseReturn from "../pages/PurchaseReturn.vue";
+import CustomersDefinition from "../pages/sales/CustomersDefinition.vue";
+import ProformaInvoice from "../pages/sales/ProformaInvoice.vue";
+import SalesInvoice from "../pages/sales/SalesInvoice.vue";
+import SalesReturn from "../pages/sales/SalesReturn.vue";
+import SalesReports from "../pages/sales/SalesReports.vue";
+import SuppliersDefinition from "../pages/purchasing/SuppliersDefinition.vue";
+import PurchaseOrder from "../pages/purchasing/PurchaseOrder.vue";
+import PurchaseInvoice from "../pages/purchasing/PurchaseInvoice.vue";
+import PurchaseReturn from "../pages/purchasing/PurchaseReturn.vue";
 
-import AccountingDocumentList from "../pages/AccountingDocumentList.vue";
-import ChartOfAccounts from "../pages/ChartOfAccounts.vue";
-import FiscalYear from "../pages/FiscalYear.vue";
+import AccountingDocumentList from "../pages/accounting/AccountingDocumentList.vue";
+import ChartOfAccounts from "../pages/accounting/ChartOfAccounts.vue";
+import FiscalYear from "../pages/accounting/FiscalYear.vue";
 
-import BankCashDefinition from "../pages/BankCashDefinition.vue";
-import CashReceipt from "../pages/CashReceipt.vue";
-import CashPayment from "../pages/CashPayment.vue";
-import ChequeManagement from "../pages/ChequeManagement.vue";
+import BankCashDefinition from "../pages/treasury/BankCashDefinition.vue";
+import CashReceipt from "../pages/treasury/CashReceipt.vue";
+import CashPayment from "../pages/treasury/CashPayment.vue";
+import ChequeManagement from "../pages/treasury/ChequeManagement.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -70,7 +70,7 @@ const router = createRouter({
           component: HomePage
         },
         {
-          path: "accounting-document",
+          path: "accounting",
           children: [
             {
               path: "create",
@@ -78,10 +78,11 @@ const router = createRouter({
               component: AccountingDocumentCreate,
             },
             { path: "list", name: "AccountingDocumentList", component: AccountingDocumentList },
+{ path: "account-review", name: "AccountReview", component: () => import("../pages/accounting/AccountReview.vue") },
           ],
         },
-        { path: "chart-of-accounts", name: "ChartOfAccounts", component: ChartOfAccounts },
-        { path: "fiscal-year", name: "FiscalYear", component: FiscalYear },
+        { path: "/accounting/chart-of-accounts", name: "ChartOfAccounts", component: ChartOfAccounts },
+        { path: "/accounting/fiscal-year", name: "FiscalYear", component: FiscalYear },
       ],
     },
     {

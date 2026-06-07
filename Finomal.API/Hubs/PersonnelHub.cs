@@ -2,10 +2,6 @@ using Finomal.Application.Personnel.Dtos;
 using Finomal.Domain.Personnel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Finomal.API.Hubs
 {
@@ -197,15 +193,15 @@ namespace Finomal.API.Hubs
                     Id = c.Id,
                     PersonnelId = c.PersonnelId,
                     PersonnelName = c.Personnel != null ? $"{c.Personnel.FirstName} {c.Personnel.LastName}".Trim() : "نامشخص",
-                    PersonnelInitials = c.Personnel != null && c.Personnel.FirstName.Length > 0 && c.Personnel.LastName.Length > 0 
-                        ? $"{c.Personnel.FirstName[0]}.{c.Personnel.LastName[0]}" 
+                    PersonnelInitials = c.Personnel != null && c.Personnel.FirstName.Length > 0 && c.Personnel.LastName.Length > 0
+                        ? $"{c.Personnel.FirstName[0]}.{c.Personnel.LastName[0]}"
                         : "-",
                     JobTitle = c.Personnel != null ? c.Personnel.JobTitle : "",
                     Title = c.Title,
                     ContractNumber = c.ContractNumber,
                     StartDate = c.StartDate,
                     EndDate = c.EndDate,
-                    StartDateString = c.StartDate.ToString("yyyy/MM/dd"), 
+                    StartDateString = c.StartDate.ToString("yyyy/MM/dd"),
                     EndDateString = c.EndDate.ToString("yyyy/MM/dd"),
                     MonthlySalary = c.MonthlySalary,
                     IsActive = c.IsActive,
@@ -333,12 +329,12 @@ namespace Finomal.API.Hubs
             {
                 var personnel = await _repository.GetAllAsync();
                 var activePersonnel = personnel.Where(p => !p.IsDeleted && p.Status == "active").ToList();
-                
+
                 var pc = new System.Globalization.PersianCalendar();
                 var start = pc.ToDateTime(year, month, 1, 0, 0, 0, 0);
                 var daysInMonth = month <= 6 ? 31 : month <= 11 ? 30 : pc.IsLeapYear(year) ? 30 : 29;
                 var end = pc.ToDateTime(year, month, daysInMonth, 23, 59, 59, 0);
-                
+
                 var attendance = await _repository.GetAttendanceByDateRangeAsync(start, end);
 
                 var newPayrolls = new List<PayrollRecord>();
@@ -348,11 +344,11 @@ namespace Finomal.API.Hubs
                     var pAttendance = attendance.Where(a => a.PersonnelId == p.Id).ToList();
                     var workDays = pAttendance.Count(a => a.Status == "work" || a.Status == "overtime");
                     var overtimeDays = pAttendance.Count(a => a.Status == "overtime");
-                    
+
                     // Simple Calculation Logic
                     decimal dayRate = p.BaseSalary / 30;
                     decimal currentBase = dayRate * workDays;
-                    
+
                     var payroll = new PayrollRecord
                     {
                         PersonnelId = p.Id,
@@ -364,17 +360,17 @@ namespace Finomal.API.Hubs
                         ChildAllowance = p.ChildAllowance,
                         OvertimeAmount = Math.Round(dayRate * 1.4m * overtimeDays), // 1.4x for overtime
                         OtherAllowances = p.OtherAllowance,
-                        
+
                         InsuranceDeduction = Math.Round((currentBase + p.HousingAllowance + p.FoodAllowance) * 0.07m), // 7% Employee share
                         TaxDeduction = currentBase > 100000000 ? Math.Round(currentBase * 0.1m) : 0, // Simplified tax
                         OtherDeductions = 0,
-                        
+
                         Status = "Calculated"
                     };
-                    
-                    payroll.NetPay = (payroll.BaseSalary + payroll.HousingAllowance + payroll.FoodAllowance + payroll.ChildAllowance + payroll.OvertimeAmount + payroll.OtherAllowances) 
+
+                    payroll.NetPay = (payroll.BaseSalary + payroll.HousingAllowance + payroll.FoodAllowance + payroll.ChildAllowance + payroll.OvertimeAmount + payroll.OtherAllowances)
                                    - (payroll.InsuranceDeduction + payroll.TaxDeduction + payroll.OtherDeductions);
-                    
+
                     newPayrolls.Add(payroll);
                 }
 
@@ -392,7 +388,7 @@ namespace Finomal.API.Hubs
         }
     }
 
-    public class CreatePersonnelRequest 
+    public class CreatePersonnelRequest
     {
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
@@ -406,7 +402,7 @@ namespace Finomal.API.Hubs
         public string Mobile { get; set; } = string.Empty;
         public string Phone { get; set; } = string.Empty;
         public string Address { get; set; } = string.Empty;
-        
+
         public string PersonnelCode { get; set; } = string.Empty;
         public string HireDate { get; set; } = string.Empty;
         public string LeaveDate { get; set; } = string.Empty;
@@ -415,7 +411,7 @@ namespace Finomal.API.Hubs
         public string JobTitle { get; set; } = string.Empty;
         public string CostCenter { get; set; } = string.Empty;
         public string WorkLocation { get; set; } = string.Empty;
-        
+
         public string BankName { get; set; } = string.Empty;
         public string AccountNumber { get; set; } = string.Empty;
         public string Iban { get; set; } = string.Empty;
@@ -428,7 +424,7 @@ namespace Finomal.API.Hubs
         public decimal ChildAllowance { get; set; }
         public decimal OvertimeFixed { get; set; }
         public decimal OtherAllowance { get; set; }
-        
+
         public string InsuranceNumber { get; set; } = string.Empty;
         public string InsuranceType { get; set; } = string.Empty;
         public string EmployeeInsurancePct { get; set; } = string.Empty;

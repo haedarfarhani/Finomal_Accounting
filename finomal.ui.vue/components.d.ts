@@ -11,8 +11,9 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    AppFooter: typeof import('./src/components/AppFooter.vue')['default']
-    AppSidebar: typeof import('./src/components/AppSidebar.vue')['default']
+    AppFooter: typeof import('./src/components/layout/AppFooter.vue')['default']
+    AppSidebar: typeof import('./src/components/layout/AppSidebar.vue')['default']
+    ConfirmDeleteDialog: typeof import('./src/components/dialogs/ConfirmDeleteDialog.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }

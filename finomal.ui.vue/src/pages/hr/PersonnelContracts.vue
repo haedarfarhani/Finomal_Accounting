@@ -140,22 +140,15 @@
         </v-card>
 
         <!-- Delete Dialog -->
-        <v-dialog v-model="deleteDialog.show" max-width="400" persistent>
-            <v-card class="bg-surface-variant">
-                <v-card-text class="pt-6 text-center">
-                    <v-icon size="48" color="error" class="mb-4">mdi-alert-circle-outline</v-icon>
-                    <h3 class="text-h6 mb-2">حذف قرارداد</h3>
-                    <p class="text-body-2 mx-auto" style="max-width: 250px;">
-                        آیا از حذف قرارداد شماره <strong>{{ deleteDialog.item?.contractNumber || deleteDialog.item?.id
-                            }}</strong> برای <strong>{{ deleteDialog.item?.name }}</strong> مطمئن هستید؟
-                    </p>
-                </v-card-text>
-                <div class="d-flex justify-center gap-3 pb-6">
-                    <v-btn variant="text" @click="deleteDialog.show = false">انصراف</v-btn>
-                    <v-btn color="error" @click="doDelete" :loading="deleteDialog.loading">حذف قرارداد</v-btn>
-                </div>
-            </v-card>
-        </v-dialog>
+        <ConfirmDeleteDialog
+            v-model="deleteDialog.show"
+            title="حذف قرارداد"
+            confirm-text="حذف قرارداد"
+            :loading="deleteDialog.loading"
+            @confirm="doDelete"
+        >
+            آیا از حذف قرارداد شماره <strong>{{ deleteDialog.item?.contractNumber || deleteDialog.item?.id }}</strong> برای <strong>{{ deleteDialog.item?.name }}</strong> مطمئن هستید؟
+        </ConfirmDeleteDialog>
 
         <v-snackbar v-model="toast.show" :color="toast.color" :timeout="3000" location="top">
             {{ toast.text }}
@@ -166,6 +159,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { createHubConnection } from '@/services/signalr';
+import ConfirmDeleteDialog from '@/components/dialogs/ConfirmDeleteDialog.vue';
 
 let connection = null;
 const search = ref('');

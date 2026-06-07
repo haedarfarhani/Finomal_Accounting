@@ -239,7 +239,7 @@ const recentActivities = ref([
 ]);
 
 function createNewDoc() {
-  router.push('/accounting-document/create');
+  router.push('/accounting/create');
 }
 
 const updateTime = () => {
